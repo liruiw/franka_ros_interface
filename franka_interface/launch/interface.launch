@@ -4,6 +4,7 @@
   <arg name="load_gripper" default="true" />
   <arg name="rate" default="1000" />
   <arg name="start_controllers" default="true" />
+  <arg name="rviz_config" default="two_camera_moveit.rviz" />
 
   <!-- Panda Control Interface -->
   <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find franka_description)/robots/panda_arm_hand.urdf.xacro'" if="$(arg load_gripper)" />
@@ -60,7 +61,7 @@
   </group>    
 
   <!-- Start rViz -->
-  <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_interface)/launch/rviz/franka_description_with_marker.rviz"/>
+  <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_interface)/launch/rviz/$(arg rviz_config)"/>
 
   <node pkg="tf" type="static_transform_publisher" name="base_to_link0" args="0 0 0 0 0 0 1 base panda_link0 100" />
   <node pkg="tf" type="static_transform_publisher" name="world_to_base" args="0 0 0 0 0 0 1 world base 100" /> 
