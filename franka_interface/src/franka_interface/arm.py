@@ -857,7 +857,7 @@ class ArmInterface(object):
             or (callable(test) and test() == True)
             or (all(diff() < threshold for diff in diffs)),
             timeout=max(duration, timeout),
-            timeout_msg=fail_msg,
+            timeout_msg=f"Timeout error: {fail_msg}",
             rate=100,
             raise_on_error=False,
         )
