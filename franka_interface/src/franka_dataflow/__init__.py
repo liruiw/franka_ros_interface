@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # **************************************************************************/
-from .wait_for import wait_for
+from .wait_for import wait_for, wait_for_with_state_callback
