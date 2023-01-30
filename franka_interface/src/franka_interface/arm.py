@@ -1014,7 +1014,7 @@ class ArmInterface(object):
                 )
 
             interval = max(dur) / self._speed_ratio
-            print(max(dur), interval)
+            # print(max(dur), interval)
             interval_lengths.append(interval)
 
             time_so_far += interval
@@ -1027,21 +1027,21 @@ class ArmInterface(object):
             q_t = position_path[i]
             positions = [q_t[n] for n in self._joint_names]
 
-            if i < 100:
-                velocities = [0.0001 * i for n in self._joint_names]
+            # if i < 100:
+            #     velocities = [0.0001 * i for n in self._joint_names]
 
-            elif i > len(position_path) - 10:
-                velocities = [0.005 for n in self._joint_names]
+            # elif i > len(position_path) - 10:
+            #     velocities = [0.005 for n in self._joint_names]
 
-            elif i < len(position_path) - 1:
+            if i < len(position_path) - 1:
                 q_tm1 = position_path[i - 1]
                 q_tp1 = position_path[i + 1]
                 dt = interval_lengths[i] + interval_lengths[i + 1]
                 velocities = [(q_tp1[n] - q_tm1[n]) / dt for n in self._joint_names]
-                print(i, velocities)
+                # print(i, velocities)
             else:
                 velocities = [0.005 for n in self._joint_names]
-                print(i, velocities)
+                # print(i, velocities)
             traj_velocities.append(velocities)
             
             # velocities 
@@ -1056,7 +1056,6 @@ class ArmInterface(object):
             if j in self._joint_angle
         ]  # Measures diff to last waypoint
 
-        IPython.embed()
         fail_msg = (
             "ArmInterface: {0} limb failed to reach commanded joint positions.".format(
                 self.name.capitalize()
