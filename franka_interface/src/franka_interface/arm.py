@@ -65,6 +65,14 @@ from franka_tools import (
 )
 
 
+def convert_dict_to_joint(joints, joint_names):
+    return np.array([joints[name] for name in joint_names])
+
+
+def convert_dict_to_wrench(wrench):
+    return np.concatenate((wrench["force"], wrench["torque"]))
+
+
 class TipState:
     def __init__(self, timestamp, pose, vel, O_effort, K_effort):
         self.timestamp = timestamp
@@ -141,10 +149,7 @@ class ArmInterface(object):
 
         joint_names = self._joint_limits.joint_names
         if not joint_names:
-            rospy.logerr(
-                "Cannot detect joint names for arm on this "
-                "robot. Exiting Arm.init()."
-            )
+            rospy.logerr("Cannot detect joint names for arm on this " "robot. Exiting Arm.init().")
 
             return
 
@@ -179,9 +184,7 @@ class ArmInterface(object):
                 "Collision Service Not found. It will not be possible to change collision behaviour of robot!"
             )
             self._collision_behaviour_interface = None
-        self._ctrl_manager = FrankaControllerManagerInterface(
-            ns=self._ns, sim=self._params._in_sim
-        )
+        self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
 
         self._speed_ratio = 0.15
 
@@ -228,27 +231,19 @@ class ArmInterface(object):
         )
 
         # Cartesian Impedance Controller Publishers
-        self._cartesian_impedance_pose_publisher = rospy.Publisher(
-            "equilibrium_pose", PoseStamped, queue_size=10
-        )
+        self._cartesian_impedance_pose_publisher = rospy.Publisher("equilibrium_pose", PoseStamped, queue_size=10)
         self._cartesian_stiffness_publisher = rospy.Publisher(
             "impedance_stiffness", CartImpedanceStiffness, queue_size=10
         )
 
         # Force Control Publisher
-        self._force_controller_publisher = rospy.Publisher(
-            "wrench_target", Wrench, queue_size=10
-        )
+        self._force_controller_publisher = rospy.Publisher("wrench_target", Wrench, queue_size=10)
 
         # Torque Control Publisher
-        self._torque_controller_publisher = rospy.Publisher(
-            "torque_target", TorqueCmd, queue_size=20
-        )
+        self._torque_controller_publisher = rospy.Publisher("torque_target", TorqueCmd, queue_size=20)
 
         # Joint Impedance Controller Publishers
-        self._joint_impedance_publisher = rospy.Publisher(
-            "joint_impedance_position_velocity", JICmd, queue_size=20
-        )
+        self._joint_impedance_publisher = rospy.Publisher("joint_impedance_position_velocity", JICmd, queue_size=20)
         self._joint_stiffness_publisher = rospy.Publisher(
             "joint_impedance_stiffness", JointImpedanceStiffness, queue_size=10
         )
@@ -259,9 +254,7 @@ class ArmInterface(object):
             self.name.capitalize(),
             joint_state_topic,
         )
-        franka_dataflow.wait_for(
-            lambda: len(self._joint_angle.keys()) > 0, timeout_msg=err_msg, timeout=5.0
-        )
+        franka_dataflow.wait_for(lambda: len(self._joint_angle.keys()) > 0, timeout_msg=err_msg, timeout=5.0)
 
         err_msg = ("%s arm, init failed to get current tip_state " "from %s") % (
             self.name.capitalize(),
@@ -277,9 +270,7 @@ class ArmInterface(object):
             self.name.capitalize(),
             self._ns + "robot_state",
         )
-        franka_dataflow.wait_for(
-            lambda: self._jacobian is not None, timeout_msg=err_msg, timeout=5.0
-        )
+        franka_dataflow.wait_for(lambda: self._jacobian is not None, timeout_msg=err_msg, timeout=5.0)
 
         self.set_joint_position_speed(self._speed_ratio)
 
@@ -346,9 +337,9 @@ class ArmInterface(object):
 
         self._robot_mode = self.RobotMode(msg.robot_mode)
 
-        self._robot_mode_ok = (
-            self._robot_mode.value != self.RobotMode.ROBOT_MODE_REFLEX
-        ) and (self._robot_mode.value != self.RobotMode.ROBOT_MODE_USER_STOPPED)
+        self._robot_mode_ok = (self._robot_mode.value != self.RobotMode.ROBOT_MODE_REFLEX) and (
+            self._robot_mode.value != self.RobotMode.ROBOT_MODE_USER_STOPPED
+        )
 
         self._jacobian = np.asarray(msg.O_Jac_EE).reshape(6, 7, order="F")
 
@@ -374,9 +365,7 @@ class ArmInterface(object):
         self._gravity = np.asarray(msg.gravity)
         self._coriolis = np.asarray(msg.coriolis)
 
-        self._errors = message_converter.convert_ros_message_to_dictionary(
-            msg.current_errors
-        )
+        self._errors = message_converter.convert_ros_message_to_dictionary(msg.current_errors)
 
     def reactivate(self):
         """
@@ -444,15 +433,11 @@ class ArmInterface(object):
         :rtype: [str]
         :return: list of names of current errors in robot state
         """
-        return (
-            [e for e in self._errors if self._errors[e] == True]
-            if self.error_in_current_state()
-            else None
-        )
+        return [e for e in self._errors if self._errors[e] == True] if self.error_in_current_state() else None
 
     def get_external_torque(self):
         return self._external_torque_filtered
-        
+
     def _on_endpoint_state(self, msg):
 
         cart_pose_trans_mat = np.asarray(msg.O_T_EE).reshape(4, 4, order="F")
@@ -610,11 +595,7 @@ class ArmInterface(object):
           - 'force': Cartesian force on x,y,z axes in np.ndarray format
           - 'torque': Torque around x,y,z axes in np.ndarray format
         """
-        return (
-            deepcopy(self._cartesian_effort)
-            if in_base_frame
-            else deepcopy(self._stiffness_frame_effort)
-        )
+        return deepcopy(self._cartesian_effort) if in_base_frame else deepcopy(self._stiffness_frame_effort)
 
     def exit_control_mode(self, timeout=0.2):
         """
@@ -678,9 +659,7 @@ class ArmInterface(object):
                       default= 0.3; range= [0.0-1.0]
         """
         if speed > 0.3:
-            rospy.logwarn(
-                "ArmInterface: Setting speed above 0.3 could be risky!! Be extremely careful."
-            )
+            rospy.logwarn("ArmInterface: Setting speed above 0.3 could be risky!! Be extremely careful.")
         self._speed_ratio = speed
 
     def set_joint_positions(self, positions):
@@ -750,14 +729,10 @@ class ArmInterface(object):
         return any(self._joint_collision) or any(self._cartesian_collision)
 
     def switchToController(self, controller_name):
-        active_controllers = self._ctrl_manager.list_active_controllers(
-            only_motion_controllers=True
-        )
+        active_controllers = self._ctrl_manager.list_active_controllers(only_motion_controllers=True)
         for ctrlr in active_controllers:
             self._ctrl_manager.stop_controller(ctrlr.name)
-            rospy.loginfo(
-                "ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name
-            )
+            rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name)
             rospy.sleep(0.5)
 
         if not self._ctrl_manager.is_loaded(controller_name):
@@ -784,9 +759,7 @@ class ArmInterface(object):
 
         return joint_diff
 
-    def move_to_joint_positions(
-        self, positions, timeout=2.0, threshold=0.00085, test=None
-    ):
+    def move_to_joint_positions(self, positions, timeout=2.0, threshold=0.00085, test=None):
         """
         (Blocking) Commands the limb to the provided positions.
         Waits until the reported joint state matches that specified.
@@ -807,10 +780,7 @@ class ArmInterface(object):
 
         if type(positions) is not dict:
             positions = {j: p for p, j in zip(positions, self._joint_names)}
-        if (
-            self._ctrl_manager.current_controller
-            != self._ctrl_manager.joint_trajectory_controller
-        ):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
 
         min_traj_dur = 0.5
@@ -821,30 +791,19 @@ class ArmInterface(object):
         for j in range(len(self._joint_names)):
             dur.append(
                 max(
-                    abs(
-                        positions[self._joint_names[j]]
-                        - self._joint_angle[self._joint_names[j]]
-                    )
+                    abs(positions[self._joint_names[j]] - self._joint_angle[self._joint_names[j]])
                     / self._joint_limits.velocity[j],
                     min_traj_dur,
                 )
             )
         duration = max(dur) / self._speed_ratio
         print("[move_to_joint_positions]: duration:", duration)
-        traj_client.add_point(
-            positions=[positions[n] for n in self._joint_names], time=duration
-        )
+        traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
 
-        diffs = [
-            self.genf(j, a) for j, a in positions.items() if j in self._joint_angle
-        ]
+        diffs = [self.genf(j, a) for j, a in positions.items() if j in self._joint_angle]
 
         traj_client.start()  # send the trajectory action request
-        fail_msg = (
-            "ArmInterface: {0} limb failed to reach commanded joint positions.".format(
-                self.name.capitalize()
-            )
-        )
+        fail_msg = "ArmInterface: {0} limb failed to reach commanded joint positions.".format(self.name.capitalize())
 
         def test_collision():
             if self.has_collided():
@@ -864,13 +823,14 @@ class ArmInterface(object):
 
         res = traj_client.result()
         if res is not None and res.error_code:
-            rospy.loginfo("Trajectory Server Message: {}".format(res))
+            rospy.logerr("Trajectory Server Message: {}".format(res))
+            exit()
 
         rospy.sleep(0.5)
         rospy.loginfo("ArmInterface: Trajectory controlling complete")
 
     def execute_position_path(
-        self, position_path, timeout=5.0, threshold=0.00085, test=None
+        self, position_path, timeout=5.0, threshold=0.00085, test=None, state_callback=False, min_traj_dur=1.0
     ):
         """
         (Blocking) Commands the limb to the provided positions.
@@ -882,34 +842,27 @@ class ArmInterface(object):
         @type timeout: float
         @param timeout: seconds to wait for move to finish [15]
         @type threshold: float
-        @param threshold: position threshold in radians across each joint when
-        move is considered successful [0.008726646]
+        @param threshold: position threshold in radians across each joint when move is considered successful
         @param test: optional function returning True if motion must be aborted
+        @param min_traj_dur: Minimum duration between two waypoints. NOTE: Setting this too low can result in
+        `ZeroDivisionError`
+        @type min_traj_dur: float
         """
 
         if len(position_path) > 0 and type(position_path[0]) is not dict:
-            position_paths = [
-                {j: p for j, p in zip(self._joint_names, pos.positions)}
-                for pos in position_paths
-            ]
+            position_paths = [{j: p for j, p in zip(self._joint_names, pos.positions)} for pos in position_paths]
 
         current_q = self.joint_angles()
-        diff_from_start = sum(
-            [abs(a - current_q[j]) for j, a in position_path[0].items()]
-        )
+        diff_from_start = sum([abs(a - current_q[j]) for j, a in position_path[0].items()])
         print("[ExecutePositionPath] Diff:", diff_from_start)
-        # print('[ExecutePositionPath] Current:', current_q)
-        # print('[ExecutePositionPath] Start:', position_path[0])
+        # print("[ExecutePositionPath] Current:", current_q)
+        # print("[ExecutePositionPath] Start:", position_path[0])
         if diff_from_start > 0.1:
             raise IOError("[ExecutePositionPath] Robot not at start of trajectory")
 
-        if (
-            self._ctrl_manager.current_controller
-            != self._ctrl_manager.joint_trajectory_controller
-        ):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
 
-        min_traj_dur = 1.0
         traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
         traj_client.clear()
 
@@ -925,10 +878,7 @@ class ArmInterface(object):
             for j in range(len(self._joint_names)):
                 dur.append(
                     max(
-                        abs(
-                            q[self._joint_names[j]]
-                            - self._joint_angle[self._joint_names[j]]
-                        )
+                        abs(q[self._joint_names[j]] - self._joint_angle[self._joint_names[j]])
                         / self._joint_limits.velocity[j],
                         min_traj_dur,
                     )
@@ -952,21 +902,13 @@ class ArmInterface(object):
             else:
                 velocities = [0.005 for n in self._joint_names]
                 # print(i, velocities)
-            traj_client.add_point(
-                positions=positions, time=total_times[i], velocities=velocities
-            )
+            traj_client.add_point(positions=positions, time=total_times[i], velocities=velocities)
 
         diffs = [
-            self.genf(j, a)
-            for j, a in (position_path[-1]).items()
-            if j in self._joint_angle
+            self.genf(j, a) for j, a in (position_path[-1]).items() if j in self._joint_angle
         ]  # Measures diff to last waypoint
 
-        fail_msg = (
-            "ArmInterface: {0} limb failed to reach commanded joint positions.".format(
-                self.name.capitalize()
-            )
-        )
+        fail_msg = "ArmInterface: {0} limb failed to reach commanded joint positions.".format(self.name.capitalize())
 
         def test_collision():
             if self.has_collided():
@@ -975,19 +917,46 @@ class ArmInterface(object):
             return False
 
         traj_client.start()  # send the trajectory action request
-        print("execute_position_path duration:", time_so_far)
-        franka_dataflow.wait_for(
-            test=lambda: test_collision()
-            or (callable(test) and test() == True)
-            or (all(diff() < threshold for diff in diffs)),
-            timeout=max(time_so_far, timeout),
-            timeout_msg=fail_msg,
-            rate=100,
-            raise_on_error=False,
-        )
+        # print("execute_position_path duration:", time_so_far)
+        results_callback = []
+        if state_callback:
+            results_callback = franka_dataflow.wait_for_with_state_callback(
+                test=lambda: test_collision()
+                or (callable(test) and test() == True)
+                or (all(diff() < threshold for diff in diffs)),
+                timeout=max(time_so_far, timeout),
+                timeout_msg=fail_msg,
+                rate=100,
+                raise_on_error=False,
+                body=self.get_state_info,
+            )
+            print("number log data:", len(results_callback))
+
+        else:
+            franka_dataflow.wait_for(
+                test=lambda: test_collision()
+                or (callable(test) and test() == True)
+                or (all(diff() < threshold for diff in diffs)),
+                timeout=max(time_so_far, timeout),
+                timeout_msg=fail_msg,
+                rate=100,
+                raise_on_error=False,
+            )
         # print('Arm Diff:', [diff() for diff in diffs])
         rospy.sleep(0.5)
         rospy.loginfo("ArmInterface: Trajectory controlling complete")
+        return results_callback
+
+    def get_state_info(self):
+        joint_name = self._joint_names
+        extra_info = {}
+        extra_info["joint_position_commanded"] = self.joint_angles
+        extra_info["joint_position_measured"] = convert_dict_to_joint(self.joint_angles(), joint_name)
+        extra_info["joint_velocity_estimated"] = convert_dict_to_joint(self.joint_velocities(), joint_name)
+        extra_info["joint_torque_measured"] = convert_dict_to_joint(self.joint_efforts(), joint_name)
+        extra_info["cartesian_measured"] = convert_dict_to_wrench(self._cartesian_effort)
+        extra_info["external_torque"] = self.get_external_torque()
+        return extra_info
 
     def move_to_touch(self, positions, timeout=3.0, threshold=0.00085):
         """
@@ -1006,10 +975,7 @@ class ArmInterface(object):
         move is considered successful [0.008726646]
         @param test: optional function returning True if motion must be aborted
         """
-        if (
-            self._ctrl_manager.current_controller
-            != self._ctrl_manager.joint_trajectory_controller
-        ):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
 
         min_traj_dur = 0.5
@@ -1021,10 +987,7 @@ class ArmInterface(object):
         for j in range(len(self._joint_names)):
             dur.append(
                 max(
-                    abs(
-                        positions[self._joint_names[j]]
-                        - self._joint_angle[self._joint_names[j]]
-                    )
+                    abs(positions[self._joint_names[j]] - self._joint_angle[self._joint_names[j]])
                     / self._joint_limits.velocity[j],
                     min_traj_dur,
                 )
@@ -1035,20 +998,13 @@ class ArmInterface(object):
             positions=[positions[n] for n in self._joint_names], time=duration
         )  # , velocities=[0.002 for n in self._joint_names])
 
-        diffs = [
-            self.genf(j, a) for j, a in positions.items() if j in self._joint_angle
-        ]
-        fail_msg = (
-            "ArmInterface: {0} limb failed to reach commanded joint positions.".format(
-                self.name.capitalize()
-            )
-        )
+        diffs = [self.genf(j, a) for j, a in positions.items() if j in self._joint_angle]
+        fail_msg = "ArmInterface: {0} limb failed to reach commanded joint positions.".format(self.name.capitalize())
 
         traj_client.start()  # send the trajectory action request
 
         franka_dataflow.wait_for(
-            test=lambda: self.has_collided()
-            or (all(diff() < threshold for diff in diffs)),
+            test=lambda: self.has_collided() or (all(diff() < threshold for diff in diffs)),
             timeout=max(duration, timeout),
             timeout_msg="Move to touch complete.",
             rate=100,
@@ -1096,10 +1052,7 @@ class ArmInterface(object):
         move is considered successful [0.008726646]
         @param test: optional function returning True if motion must be aborted
         """
-        if (
-            self._ctrl_manager.current_controller
-            != self._ctrl_manager.joint_trajectory_controller
-        ):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
 
         print("[move_from_touch] Desired end config")
@@ -1113,10 +1066,7 @@ class ArmInterface(object):
         for j in range(len(self._joint_names)):
             dur.append(
                 max(
-                    abs(
-                        positions[self._joint_names[j]]
-                        - self._joint_angle[self._joint_names[j]]
-                    )
+                    abs(positions[self._joint_names[j]] - self._joint_angle[self._joint_names[j]])
                     / self._joint_limits.velocity[j],
                     min_traj_dur,
                 )
@@ -1124,18 +1074,10 @@ class ArmInterface(object):
 
         duration = max(dur) / speed_ratio
         print("[move_from_touch] duration:", duration)
-        traj_client.add_point(
-            positions=[positions[n] for n in self._joint_names], time=duration
-        )
+        traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
 
-        diffs = [
-            self.genf(j, a) for j, a in positions.items() if j in self._joint_angle
-        ]
-        fail_msg = (
-            "ArmInterface: {0} limb failed to reach commanded joint positions.".format(
-                self.name.capitalize()
-            )
-        )
+        diffs = [self.genf(j, a) for j, a in positions.items() if j in self._joint_angle]
+        fail_msg = "ArmInterface: {0} limb failed to reach commanded joint positions.".format(self.name.capitalize())
 
         traj_client.start()  # send the trajectory action request
 
@@ -1153,10 +1095,7 @@ class ArmInterface(object):
         rospy.loginfo("ArmInterface: Trajectory controlling complete")
 
     def set_cart_impedance_pose(self, pose, stiffness=None):
-        if (
-            self._ctrl_manager.current_controller
-            != self._ctrl_manager.cartesian_impedance_controller
-        ):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.cartesian_impedance_controller:
             self.switchToController(self._ctrl_manager.cartesian_impedance_controller)
 
         if stiffness is not None:
@@ -1186,10 +1125,7 @@ class ArmInterface(object):
 
     def set_joint_impedance_config(self, q, stiffness=None):
         # Need q converted to list
-        if (
-            self._ctrl_manager.current_controller
-            != self._ctrl_manager.joint_impedance_controller
-        ):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_impedance_controller:
             self.switchToController(self._ctrl_manager.joint_impedance_controller)
 
         if stiffness is not None:
@@ -1210,12 +1146,7 @@ class ArmInterface(object):
     def set_torque(self, tau):
         raise NotImplementedError("Still working on the bugs in this!")
 
-        switch_ctrl = (
-            True
-            if self._ctrl_manager.current_controller
-            != self._ctrl_manager.ntorque_controller
-            else False
-        )
+        switch_ctrl = True if self._ctrl_manager.current_controller != self._ctrl_manager.ntorque_controller else False
         if switch_ctrl:
             self.switchToController(self._ctrl_manager.ntorque_controller)
 
@@ -1224,10 +1155,7 @@ class ArmInterface(object):
         self._torque_controller_publisher.publish(torque)
 
     def execute_cart_impedance_traj(self, poses, stiffness=None):
-        if (
-            self._ctrl_manager.current_controller
-            != self._ctrl_manager.cartesian_impedance_controller
-        ):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.cartesian_impedance_controller:
             self.switchToController(self._ctrl_manager.cartesian_impedance_controller)
 
         for i in range(len(poses)):
@@ -1236,10 +1164,7 @@ class ArmInterface(object):
                 self.resetErrors()
 
     def execute_joint_impedance_traj(self, qs, stiffness=None):
-        if (
-            self._ctrl_manager.current_controller
-            != self._ctrl_manager.joint_impedance_controller
-        ):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_impedance_controller:
             self.switchToController(self._ctrl_manager.joint_impedance_controller)
 
         for i in range(len(qs)):
@@ -1271,9 +1196,7 @@ class ArmInterface(object):
         assert callable(
             func
         ), "ArmInterface: Invalid argument provided to ArmInterface->pause_controllers_and_do. Argument 1 should be callable."
-        active_controllers = self._ctrl_manager.list_active_controllers(
-            only_motion_controllers=True
-        )
+        active_controllers = self._ctrl_manager.list_active_controllers(only_motion_controllers=True)
 
         rospy.loginfo("ArmInterface: Stopping motion controllers temporarily...")
         for ctrlr in active_controllers:
@@ -1310,9 +1233,7 @@ class ArmInterface(object):
             return self.pause_controllers_and_do(self._frames_interface.reset_EE_frame)
 
         else:
-            rospy.logwarn(
-                "ArmInterface: Frames changing not available in simulated environment"
-            )
+            rospy.logwarn("ArmInterface: Frames changing not available in simulated environment")
             return False
 
     def set_EE_frame(self, frame):
@@ -1328,20 +1249,14 @@ class ArmInterface(object):
         """
         if self._frames_interface:
 
-            if self._frames_interface.frames_are_same(
-                self._frames_interface.get_EE_frame(as_mat=True), frame
-            ):
+            if self._frames_interface.frames_are_same(self._frames_interface.get_EE_frame(as_mat=True), frame):
                 rospy.loginfo("ArmInterface: EE Frame already at the target frame.")
                 return True
 
-            return self.pause_controllers_and_do(
-                self._frames_interface.set_EE_frame, frame
-            )
+            return self.pause_controllers_and_do(self._frames_interface.set_EE_frame, frame)
 
         else:
-            rospy.logwarn(
-                "ArmInterface: Frames changing not available in simulated environment"
-            )
+            rospy.logwarn("ArmInterface: Frames changing not available in simulated environment")
 
     def set_EE_frame_to_link(self, frame_name, timeout=5.0):
         """
@@ -1355,9 +1270,7 @@ class ArmInterface(object):
         """
         if self._frames_interface:
             retval = True
-            if not self._frames_interface.EE_frame_already_set(
-                self._frames_interface.get_link_tf(frame_name)
-            ):
+            if not self._frames_interface.EE_frame_already_set(self._frames_interface.get_link_tf(frame_name)):
 
                 return self.pause_controllers_and_do(
                     self._frames_interface.set_EE_frame_to_link,
@@ -1366,9 +1279,7 @@ class ArmInterface(object):
                 )
 
         else:
-            rospy.logwarn(
-                "ArmInterface: Frames changing not available in simulated environment"
-            )
+            rospy.logwarn("ArmInterface: Frames changing not available in simulated environment")
 
     def set_collision_threshold(self, cartesian_forces=None, joint_torques=None):
         """
