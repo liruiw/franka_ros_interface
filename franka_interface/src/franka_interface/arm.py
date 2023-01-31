@@ -899,7 +899,7 @@ class ArmInterface(object):
     #     rospy.loginfo("ArmInterface: Trajectory controlling complete")
 
     def execute_position_path(
-        self, position_path, timeout=5.0, threshold=0.00085, test=None, state_callback=False, min_traj_dur=0.05
+        self, position_path, timeout=5.0, threshold=0.00085, test=None, state_callback=False, min_traj_dur=1.0
     ):
         """
         (Blocking) Commands the limb to the provided positions.
@@ -911,9 +911,11 @@ class ArmInterface(object):
         @type timeout: float
         @param timeout: seconds to wait for move to finish [15]
         @type threshold: float
-        @param threshold: position threshold in radians across each joint when
-        move is considered successful [0.008726646]
+        @param threshold: position threshold in radians across each joint when move is considered successful
         @param test: optional function returning True if motion must be aborted
+        @param min_traj_dur: Minimum duration between two waypoints. NOTE: Setting this too low can result in
+        `ZeroDivisionError`
+        @type min_traj_dur: float
         """
 
         if len(position_path) > 0 and type(position_path[0]) is not dict:
@@ -928,8 +930,9 @@ class ArmInterface(object):
             raise IOError("[ExecutePositionPath] Robot not at start of trajectory")
 
         if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
+            rospy.loginfo("Switching to joint trajectory controller")
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
-            print("Switched to joint trajectory controller")
+            rospy.loginfo("Switched to joint trajectory controller")
 
         traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
 
@@ -953,7 +956,7 @@ class ArmInterface(object):
                 )
 
             interval = max(dur) / self._speed_ratio
-            print(max(dur), interval)
+            # print(max(dur), interval)
             interval_lengths.append(interval)
 
             time_so_far += interval
@@ -990,7 +993,6 @@ class ArmInterface(object):
             self.genf(j, a) for j, a in (position_path[-1]).items() if j in self._joint_angle
         ]  # Measures diff to last waypoint
 
-        IPython.embed()
         fail_msg = "ArmInterface: {0} limb failed to reach commanded joint positions.".format(self.name.capitalize())
 
         def test_collision():
