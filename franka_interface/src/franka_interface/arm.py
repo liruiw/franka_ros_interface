@@ -854,7 +854,7 @@ class ArmInterface(object):
 
         current_q = self.joint_angles()
         diff_from_start = sum([abs(a - current_q[j]) for j, a in position_path[0].items()])
-        print("[ExecutePositionPath] Diff:", diff_from_start)
+        print("[ExecutePositionPath] Diff from start:", diff_from_start)
         # print("[ExecutePositionPath] Current:", current_q)
         # print("[ExecutePositionPath] Start:", position_path[0])
         if diff_from_start > 0.1:
@@ -862,9 +862,9 @@ class ArmInterface(object):
 
         if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
+            print("Switched to joint trajectory controller")
 
         traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
-        traj_client.clear()
 
         time_so_far = 0
         total_times = [0]

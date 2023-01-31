@@ -1,16 +1,16 @@
 # /***************************************************************************
 
-# 
+#
 # @package: franka_tools
 # @metapackage: franka_ros_interface
 # @author: Saif Sidhik <sxs1412@bham.ac.uk>
-# 
+#
 
 # **************************************************************************/
 
 # /***************************************************************************
 # Copyright (c) 2019-2020, Saif Sidhik
- 
+
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -25,7 +25,6 @@
 # **************************************************************************/
 
 import rospy
-import sys
 import actionlib
 from copy import copy
 from control_msgs.msg import (
@@ -43,32 +42,37 @@ class JointTrajectoryActionClient(object):
     the "joint_position_trajectory_controller". This can be set using instance of
     :py:class:`franka_tools.FrankaControllerManagerInterface`.
     """
-    def __init__(self, joint_names, controller_name = "position_joint_trajectory_controller"):
+
+    def __init__(self, joint_names, controller_name="position_joint_trajectory_controller"):
         self._joint_names = joint_names
 
-        self._client = actionlib.SimpleActionClient("/%s/follow_joint_trajectory"%(controller_name),
+        action_topic = f"/{controller_name}/follow_joint_trajectory"
+        rospy.loginfo(f"Establishing connection to {action_topic}")
+        self._client = actionlib.SimpleActionClient(
+            action_topic,
             FollowJointTrajectoryAction,
         )
+        server_up = self._client.wait_for_server(timeout=rospy.Duration(3.0))
+        if not server_up:
+            rospy.logerr("Timed out waiting for Joint Trajectory Action Server")
+            exit()
+
         self._goal = FollowJointTrajectoryGoal()
         self._goal_time_tolerance = rospy.Time(0.1)
         self._goal.goal_time_tolerance = self._goal_time_tolerance
-        server_up = self._client.wait_for_server(timeout=rospy.Duration(3.0))
-        if not server_up:
-            rospy.logerr("Timed out waiting for Joint Trajectory"
-                         " Action Server to connect. Start the action server"
-                         " before running example.")
-            rospy.signal_shutdown("Timed out waiting for Action Server")
-            sys.exit(1)
+
         self.clear()
 
-    def add_point(self, positions, time, velocities = None):
+        print("[JointTrajectoryActionClient]: Finished creation")
+
+    def add_point(self, positions, time, velocities=None):
         """
         Add a waypoint to the trajectory.
 
         :param positions: target joint positions
         :type positions: [float]*7
-        :param time: target time in seconds from the start of trajectory 
-            to reach the specified goal 
+        :param time: target time in seconds from the start of trajectory
+            to reach the specified goal
         :type time: float
         :param velocities: goal velocities for joints (give atleast 0.0001)
         :type velocities: [float]*7
@@ -123,6 +127,6 @@ class JointTrajectoryActionClient(object):
         self._goal.trajectory.joint_names = self._joint_names
 
 
-if __name__ == '__main__':
-    
+if __name__ == "__main__":
+
     pass
