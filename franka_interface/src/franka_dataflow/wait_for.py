@@ -1,17 +1,17 @@
 # /***************************************************************************
 # Modified from: Rethink Robotics Intera SDK
-#
+# 
 # @package: franka_interface
 # @metapackage: franka_ros_interface
 # @author: Saif Sidhik <sxs1412@bham.ac.uk>
-#
+# 
 
 # **************************************************************************/
 
 # /***************************************************************************
 # Copyright (c) 2019-2020, Saif Sidhik
 # Copyright (c) 2013-2018, Rethink Robotics Inc.
-
+ 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -31,7 +31,8 @@ import errno
 import rospy
 
 
-def wait_for(test, timeout=1.0, raise_on_error=True, rate=100, timeout_msg="timeout expired", body=None):
+def wait_for(test, timeout=1.0, raise_on_error=True, rate=100,
+             timeout_msg="timeout expired", body=None):
     """
     Waits until some condition evaluates to true.
 
@@ -61,11 +62,11 @@ def wait_for(test, timeout=1.0, raise_on_error=True, rate=100, timeout_msg="time
     return True
 
 
-def wait_for_with_state_callback(
-    test, timeout=1.0, raise_on_error=True, rate=100, timeout_msg="timeout expired", body=None
-):
+def wait_for_with_state_callback(test, timeout=1.0, raise_on_error=True, rate=100,
+             timeout_msg="timeout expired", body=None):
     """
     Waits until some condition evaluates to true.
+
     @param test: zero param function to be evaluated
     @param timeout: max amount of time to wait. negative/inf for indefinitely
     @param raise_on_error: raise or just return False
@@ -97,10 +98,8 @@ def wait_for_with_state_callback(
             curr_time = rospy.get_time()
             if curr_time - record_time > time_gap:
                 record_time = curr_time
-                save_info = body()  # body should be calibration info
-                save_info["utime"] = rospy.get_time() - (
-                    start_time
-                )  #  / 1e6 # env.time # this shouldn't need to change
+                save_info = body() # body should be calibration info
+                save_info["utime"] = rospy.get_time() - (start_time)  #  / 1e6 # env.time # this shouldn't need to change
                 print(f"step time: {save_info['utime']}, {save_info}")
                 results.append(save_info)
 
