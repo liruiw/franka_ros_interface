@@ -1058,15 +1058,15 @@ class ArmInterface(object):
         assert (
             joint_pos_traj.end_time() == joint_vel_traj.end_time()
         ), "Position and velocity trajectories should end at the same time."
-        if abs(joint_pos_traj.end_time() - sample_times[-1]) > 0.1:
-            rospy.logwarn(
-                f"Last sample time ({sample_times[-1]}s) differs from trajectory end time ({joint_pos_traj.end_time()}s)"
-            )
 
         if sample_times is None:
             end_time = joint_pos_traj.end_time()
             num_samples = int(end_time / dt)
             sample_times = np.linspace(0.0, end_time, num_samples)
+        elif abs(joint_pos_traj.end_time() - sample_times[-1]) > 0.1:
+            rospy.logwarn(
+                f"Last sample time ({sample_times[-1]}s) differs from trajectory end time ({joint_pos_traj.end_time()}s)"
+            )
 
         current_q = self.joint_angles()
         diff_from_start = sum(
