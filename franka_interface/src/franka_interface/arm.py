@@ -64,6 +64,8 @@ from franka_tools import (
     CollisionBehaviourInterface,
 )
 import IPython
+from pydrake.all import PathParameterizedTrajectory
+from typing import Iterable, Optional
 
 
 def convert_dict_to_joint(joints, joint_names):
@@ -1033,6 +1035,85 @@ class ArmInterface(object):
         rospy.sleep(0.1)
         rospy.loginfo("ArmInterface: Trajectory controlling complete")
         return results_callback
+
+    def execute_toppra_path(
+        self,
+        joint_pos_traj: PathParameterizedTrajectory,
+        joint_vel_traj: PathParameterizedTrajectory,
+        sample_times: Optional[Iterable[float]] = None,
+        dt: float = 0.05,
+        timeout: float = 5.0,
+        threshold: float = 0.00085,
+        test: bool = None,
+    ) -> None:
+        """
+        (Blocking) Executed a Drake Toppra joint space trajectory.
+
+        TODO
+        :param dt: The time between trajectory samples. Only used if `sample_times` is None.
+        :param timeout: Seconds to wait for move to finish.
+        :param threshold: Position threshold in radians across each joint when move is considered successful.
+        :param test: Optional function returning True if motion must be aborted.
+        """
+        assert (
+            joint_pos_traj.end_time() == joint_vel_traj.end_time()
+        ), "Position and velocity trajectories should end at the same time."
+        if abs(joint_pos_traj.end_time() - sample_times[-1]) > 0.1:
+            rospy.logwarn(
+                f"Last sample time ({sample_times[-1]}s) differs from trajectory end time ({joint_pos_traj.end_time()}s)"
+            )
+
+        if sample_times is None:
+            end_time = joint_pos_traj.end_time()
+            num_samples = int(end_time / dt)
+            sample_times = np.linspace(0.0, end_time, num_samples)
+
+        current_q = self.joint_angles()
+        diff_from_start = sum(
+            [abs(pos - current_q[name]) for name, pos in zip(self._joint_names, joint_pos_traj.value(sample_times[0]))]
+        )
+        rospy.loginfo(f"Joint position diff from start: {diff_from_start}")
+        if diff_from_start > 0.1:
+            raise IOError("[ExecuteToppraPath] Robot not at start of trajectory")
+
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
+            rospy.loginfo("Switching to joint trajectory controller")
+            self.switchToController(self._ctrl_manager.joint_trajectory_controller)
+            rospy.loginfo("Switched to joint trajectory controller")
+
+        traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
+
+        position_path = np.array([joint_pos_traj.value(t) for t in sample_times])
+        velocity_path = np.array([joint_vel_traj.value(t) for t in sample_times])
+
+        for positions, velocities, time in zip(position_path, velocity_path, sample_times):
+            traj_client.add_point(positions=positions, time=time, velocities=velocities)
+
+        traj_client.start()
+
+        # Measures diff to last waypoint
+        diffs = [self.genf(name, pos) for name, pos in zip(self._joint_names, position_path[-1])]
+
+        fail_msg = "ArmInterface: {0} limb failed to reach commanded joint positions.".format(self.name.capitalize())
+
+        def test_collision():
+            if self.has_collided():
+                rospy.logerr(" ".join(["Collision detected.", fail_msg]))
+                return True
+            return False
+
+        franka_dataflow.wait_for(
+            test=lambda: test_collision()
+            or (callable(test) and test() == True)
+            or (all(diff() < threshold for diff in diffs)),
+            timeout=max(sample_times[-1], timeout),
+            timeout_msg=fail_msg,
+            rate=100,
+            raise_on_error=False,
+        )
+
+        rospy.sleep(0.1)
+        rospy.loginfo("ArmInterface: Trajectory controlling complete")
 
     def get_state_info(self):
         joint_name = self._joint_names
