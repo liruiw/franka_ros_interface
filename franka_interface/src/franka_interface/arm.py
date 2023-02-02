@@ -1042,7 +1042,7 @@ class ArmInterface(object):
         joint_pos_traj: PathParameterizedTrajectory,
         joint_vel_traj: PathParameterizedTrajectory,
         sample_times: Optional[Iterable[float]] = None,
-        dt: float = 0.05,
+        dt: float = 0.1,
         timeout: float = 5.0,
         threshold: float = 0.00085,
         test: bool = None,
