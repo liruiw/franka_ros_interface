@@ -51,6 +51,7 @@ from franka_core_msgs.msg import (
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64
 from geometry_msgs.msg import PoseStamped, Wrench
+from moveit_msgs.msg import RobotTrajectory
 
 import franka_msgs
 import franka_interface
@@ -1049,7 +1050,10 @@ class ArmInterface(object):
         """
         (Blocking) Executed a Drake Toppra joint space trajectory.
 
-        TODO
+        :param joint_pos_traj: Continous joint position trajectory.
+        :param joint_vel_traj: Continous joint velocity trajectory.
+        :param sample_times: The optional times to sample the trajectory at. If not given, sample the trajectory at
+            equidistant points determined by `dt`.
         :param dt: The time between trajectory samples. Only used if `sample_times` is None.
         :param timeout: Seconds to wait for move to finish.
         :param threshold: Position threshold in radians across each joint when move is considered successful.
@@ -1107,6 +1111,79 @@ class ArmInterface(object):
             or (callable(test) and test() == True)
             or (all(diff() < threshold for diff in diffs)),
             timeout=max(sample_times[-1], timeout),
+            timeout_msg=fail_msg,
+            rate=100,
+            raise_on_error=False,
+        )
+
+        rospy.sleep(0.1)
+        rospy.loginfo("ArmInterface: Trajectory controlling complete")
+
+    def execute_moveit_trajectory(
+        self,
+        traj: RobotTrajectory,
+        timeout: float = 5.0,
+        threshold: float = 0.00085,
+        test: bool = None,
+    ) -> None:
+        """
+        (Blocking) Executed a MoveIt joint space trajectory.
+
+        :param traj: The MoveIt trajectory to send to the robot.
+        :param timeout: Seconds to wait for move to finish.
+        :param threshold: Position threshold in radians across each joint when move is considered successful.
+        :param test: Optional function returning True if motion must be aborted.
+        """
+        assert np.all(
+            [joint_a == joint_b for joint_a, joint_b in zip(self._joint_names, traj.joint_trajectory.joint_names)]
+        ), "Trajectory joints don't match robot joints"
+
+        joint_traj_points = traj.joint_trajectory.points
+        position_path = [p.positions for p in joint_traj_points]
+        velocity_path = [p.velocities for p in joint_traj_points]
+        # NOTE: Can't yet send accelerations
+        # acceleration_path = [p.accelerations for p in joint_traj_points]
+        times_from_start = [p.time_from_start.to_sec() for p in joint_traj_points]
+
+        current_q = self.joint_angles()
+        diff_from_start = sum([abs(pos - current_q[name]) for name, pos in zip(self._joint_names, position_path[0])])
+        rospy.loginfo(f"Joint position diff from start: {diff_from_start}")
+        if diff_from_start > 0.1:
+            raise IOError("[ExecuteMoveItTrajectory] Robot not at start of trajectory")
+
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
+            rospy.loginfo("Switching to joint trajectory controller")
+            self.switchToController(self._ctrl_manager.joint_trajectory_controller)
+            rospy.loginfo("Switched to joint trajectory controller")
+
+        traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
+
+        if len(velocity_path) > 0:
+            for positions, velocities, time in zip(position_path, velocity_path, times_from_start):
+                traj_client.add_point(positions=positions, time=time, velocities=velocities)
+        else:
+            rospy.logwarn("Velocity path is empty")
+            for positions, time in zip(position_path, times_from_start):
+                traj_client.add_point(positions=positions, time=time)
+
+        traj_client.start()
+
+        # Measures diff to last waypoint
+        diffs = [self.genf(name, pos) for name, pos in zip(self._joint_names, position_path[-1])]
+
+        fail_msg = "ArmInterface: {0} limb failed to reach commanded joint positions.".format(self.name.capitalize())
+
+        def test_collision():
+            if self.has_collided():
+                rospy.logerr(" ".join(["Collision detected.", fail_msg]))
+                return True
+            return False
+
+        franka_dataflow.wait_for(
+            test=lambda: test_collision()
+            or (callable(test) and test() == True)
+            or (all(diff() < threshold for diff in diffs)),
+            timeout=max(times_from_start[-1], timeout),
             timeout_msg=fail_msg,
             rate=100,
             raise_on_error=False,
