@@ -1125,6 +1125,7 @@ class ArmInterface(object):
         timeout: float = 5.0,
         threshold: float = 0.00085,
         test: bool = None,
+        state_callback: bool = False,
     ) -> None:
         """
         (Blocking) Executed a MoveIt joint space trajectory.
@@ -1158,7 +1159,7 @@ class ArmInterface(object):
 
         traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
 
-        if len(velocity_path) > 0:
+        if len(velocity_path) > 0:  # Important to send velocities!!
             for positions, velocities, time in zip(position_path, velocity_path, times_from_start):
                 traj_client.add_point(positions=positions, time=time, velocities=velocities)
         else:
@@ -1179,23 +1180,42 @@ class ArmInterface(object):
                 return True
             return False
 
-        franka_dataflow.wait_for(
-            test=lambda: test_collision()
-            or (callable(test) and test() == True)
-            or (all(diff() < threshold for diff in diffs)),
-            timeout=max(times_from_start[-1], timeout),
-            timeout_msg=fail_msg,
-            rate=100,
-            raise_on_error=False,
-        )
+        results_callback = []
+        if state_callback:
+            # Why does this return an RLock and not the data
+            results_callback = franka_dataflow.wait_for_with_state_callback(
+                test=lambda: test_collision()
+                or (callable(test) and test() == True)
+                or (all(diff() < threshold for diff in diffs)),
+                timeout=max(times_from_start[-1], timeout),
+                timeout_msg=fail_msg,
+                rate=100,
+                raise_on_error=False,
+                body=self.get_state_info,
+            )
+            print("number log data:", len(results_callback))
 
+        else:
+            franka_dataflow.wait_for(
+                test=lambda: test_collision()
+                or (callable(test) and test() == True)
+                or (all(diff() < threshold for diff in diffs)),
+                timeout=max(times_from_start[-1], timeout),
+                timeout_msg=fail_msg,
+                rate=100,
+                raise_on_error=False,
+            )
+
+        # print('Arm Diff:', [diff() for diff in diffs])
         rospy.sleep(0.1)
         rospy.loginfo("ArmInterface: Trajectory controlling complete")
+        print(results_callback)
+        return results_callback
 
     def get_state_info(self):
         joint_name = self._joint_names
         extra_info = {}
-        extra_info["joint_position_commanded"] = self.joint_angles
+        extra_info["joint_position_commanded"] = 0. # convert_dict_to_joint(self.cmd_joint_angles(), joint_name)  # this should be different?
         extra_info["joint_position_measured"] = convert_dict_to_joint(self.joint_angles(), joint_name)
         extra_info["joint_velocity_estimated"] = convert_dict_to_joint(self.joint_velocities(), joint_name)
         extra_info["joint_torque_measured"] = convert_dict_to_joint(self.joint_efforts(), joint_name)
