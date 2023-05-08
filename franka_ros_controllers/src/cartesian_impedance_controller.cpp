@@ -92,6 +92,9 @@ bool CartesianImpedanceController::init(hardware_interface::RobotHW* robot_hw,
       return false;
     }
   }
+  
+  ROS_INFO_STREAM(
+        "Stiffness Gain Update! " << stiffness_gains_[0] << ", " << stiffness_gains_[3]);
 
   cartesian_stiffness_target_.setIdentity();
   cartesian_damping_target_.setIdentity();
@@ -143,6 +146,10 @@ void CartesianImpedanceController::update(const ros::Time& /*time*/,
   std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
   std::array<double, 42> jacobian_array =
       model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
+
+  // ROS_INFO_STREAM(
+  //       "Inside CartesianImpedanceController Update! "
+  //       "Target End Effector Pose!" << position_d_target_);
 
   // convert to Eigen
   Eigen::Map<Eigen::Matrix<double, 7, 1>> coriolis(coriolis_array.data());

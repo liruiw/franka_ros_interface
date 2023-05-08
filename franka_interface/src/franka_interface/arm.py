@@ -375,7 +375,8 @@ class ArmInterface(object):
         """
         use automatic recovery
         """
-        if not self._robot_mode_ok:
+        # print(self.what_errors())
+        if  self.what_errors():
             robot_enable = franka_interface.RobotEnable()
             robot_enable.enable()
 
@@ -834,72 +835,6 @@ class ArmInterface(object):
 
         # rospy.sleep(delay)
         # rospy.loginfo("ArmInterface: Trajectory controlling complete")
-
-    # def execute_position_path(self, position_path, timeout=15.0,
-    #                             threshold=0.00085, test=None):
-    #     """
-    #     (Blocking) Commands the limb to the provided positions.
-    #     Waits until the reported joint state matches that specified.
-    #     This function uses a low-pass filter to smooth the movement.
-    #     @type positions: dict({str:float})
-    #     @param positions: joint_name:angle command
-    #     @type timeout: float
-    #     @param timeout: seconds to wait for move to finish [15]
-    #     @type threshold: float
-    #     @param threshold: position threshold in radians across each joint when
-    #     move is considered successful [0.008726646]
-    #     @param test: optional function returning True if motion must be aborted
-    #     """
-
-    #     current_q = self.joint_angles()
-    #     diff_from_start = sum([abs(a-current_q[j]) for j, a in position_path[0].items()])
-    #     if diff_from_start > 0.1:
-    #         raise IOError("Robot not at start of trajectory")
-
-    #     if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
-    #         self.switchToController(self._ctrl_manager.joint_trajectory_controller)
-
-    #     min_traj_dur = 0.01
-    #     traj_client = JointTrajectoryActionClient(joint_names = self.joint_names())
-    #     traj_client.clear()
-
-    #     time_so_far = 0
-    #     # Start at the second waypoint because robot is already at first waypoint
-    #     for i in range(1, len(position_path)):
-    #         q = position_path[i]
-    #         dur = []
-    #         for j in range(len(self._joint_names)):
-    #             dur.append(max(abs(q[self._joint_names[j]] - self._joint_angle[self._joint_names[j]]) / self._joint_limits.velocity[j], min_traj_dur))
-
-    #         time_so_far += max(dur)/self._speed_ratio
-    #         traj_client.add_point(positions = [q[n] for n in self._joint_names], time = time_so_far, velocities=[0.001 for n in self._joint_names])
-
-    #     diffs = [self.genf(j, a) for j, a in (position_path[-1]).items() if j in self._joint_angle] # Measures diff to last waypoint
-
-    #     fail_msg = "ArmInterface: {0} limb failed to reach commanded joint positions.".format(
-    #                                                   self.name.capitalize())
-    #     def test_collision():
-    #         if self.has_collided():
-    #             rospy.logerr(' '.join(["Collision detected.", fail_msg]))
-    #             return True
-    #         return False
-
-    #     # IPython.embed()
-    #     traj_client.start() # send the trajectory action request
-
-    #     franka_dataflow.wait_for(
-    #         test=lambda: test_collision() or \
-    #                      (callable(test) and test() == True) or \
-    #                      (all(diff() < threshold for diff in diffs)),
-    #         #timeout=timeout,
-    #         timeout=max(time_so_far, timeout), #XXX
-    #         timeout_msg=fail_msg,
-    #         rate=100,
-    #         raise_on_error=False
-    #         )
-
-    #     rospy.sleep(0.5)
-    #     rospy.loginfo("ArmInterface: Trajectory controlling complete")
 
     def execute_position_path(
         self, position_path, timeout=5.0, threshold=0.00085, test=None, state_callback=False, min_traj_dur=1.0
@@ -1389,6 +1324,35 @@ class ArmInterface(object):
         rospy.sleep(0.1)
         while sum(map(abs, self.convertToList(self.joint_velocities()))) > 1e-2:
             rospy.sleep(0.1)
+
+    def set_cart_impedance_pose_nonblocking(self, pose, stiffness=None):
+        if self._ctrl_manager.current_controller != self._ctrl_manager.cartesian_impedance_controller:
+            self.switchToController(self._ctrl_manager.cartesian_impedance_controller)
+
+        if stiffness is not None:
+            stiffness_gains = CartImpedanceStiffness()
+            stiffness_gains.x = stiffness[0]
+            stiffness_gains.y = stiffness[1]
+            stiffness_gains.z = stiffness[2]
+            stiffness_gains.xrot = stiffness[3]
+            stiffness_gains.yrot = stiffness[4]
+            stiffness_gains.zrot = stiffness[5]
+            self._cartesian_stiffness_publisher.publish(stiffness_gains)
+
+        marker_pose = PoseStamped()
+        marker_pose.pose.position.x = pose["position"][0]
+        marker_pose.pose.position.y = pose["position"][1]
+        marker_pose.pose.position.z = pose["position"][2]
+
+
+        marker_pose.pose.orientation.x = pose["orientation"].x
+        marker_pose.pose.orientation.y = pose["orientation"].y
+        marker_pose.pose.orientation.z = pose["orientation"].z
+        marker_pose.pose.orientation.w = pose["orientation"].w
+        self._cartesian_impedance_pose_publisher.publish(marker_pose)
+        self.reactivate()
+
+
 
     def set_joint_impedance_config(self, q, stiffness=None):
         # Need q converted to list

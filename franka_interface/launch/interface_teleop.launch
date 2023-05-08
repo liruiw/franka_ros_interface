@@ -1,0 +1,47 @@
+<?xml version="1.0" ?>
+<launch>
+  <rosparam command="load" file="$(find franka_ros_controllers)/config/ros_controllers.yaml" ns="/franka_ros_interface"/>
+  <arg name="load_gripper" default="true" />
+  <arg name="rate" default="1000" />
+  <arg name="rviz_config" default="two_camera_moveit.rviz" />
+  <arg name="robot_ip" />
+
+  <!-- Panda Control Interface -->
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find franka_description)/robots/panda_arm_hand.urdf.xacro'" if="$(arg load_gripper)" />
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find franka_description)/robots/panda_arm.urdf.xacro'" unless="$(arg load_gripper)" />
+  <rosparam command="load" file="$(find franka_interface)/config/robot_config.yaml"/>
+
+
+  <include file="$(find franka_control)/launch/franka_control.launch" >
+    <arg name="robot_ip" default="172.16.0.2" />
+    <arg name="load_gripper" default="true" />
+  </include>
+
+  <rosparam command="load" file="$(find franka_ros_controllers)/config/ros_controllers.yaml" />
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="cartesian_impedance_controller"/>
+
+  <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_interface)/launch/rviz/franka_description_with_marker.rviz"/>
+  <node name="interactive_marker" pkg="franka_ros_controllers" type="interactive_marker.py" required="true" output="screen">
+    <param name="link_name" value="panda_link0" />
+  </node>
+  <!-- <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" required="false" /> -->
+
+  <!-- Expose the hyperparameters here -->
+  <!-- Very Stiff -->
+  <!-- <rosparam param="/cartesian_impedance_controller/stiffness_gains">[400.0, 400.0, 400.0, 40.0, 40.0, 40.0]</rosparam> -->
+
+  <!-- Stiff -->
+  <rosparam param="/cartesian_impedance_controller/stiffness_gains">[200.0, 200.0, 200.0, 20.0, 20.0, 20.0]</rosparam>
+
+  <!-- Compliant -->
+  <!-- <rosparam param="/cartesian_impedance_controller/stiffness_gains">[50.0, 50.0, 50.0, 5.0, 5.0, 5.0]</rosparam> -->
+
+  <!-- Start rViz -->
+  <!-- <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_interface)/launch/rviz/$(arg rviz_config)"/> -->
+
+  <node pkg="tf" type="static_transform_publisher" name="base_to_link0" args="0 0 0 0 0 0 1 base panda_link0 100" />
+  <node pkg="tf" type="static_transform_publisher" name="world_to_base" args="0 0 0 0 0 0 1 world base 100" /> 
+
+</launch>
+
+

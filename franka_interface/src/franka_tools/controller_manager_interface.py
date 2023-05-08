@@ -231,6 +231,10 @@ class FrankaControllerManagerInterface(object):
 
     def _assert_one_active_controller(self):
         ctrlr_list = self.list_active_controllers(only_motion_controllers=True)
+        # import IPython
+        # print(ctrlr_list)
+        # IPython.embed()
+        
         assert len(ctrlr_list) <= 1, "FrankaControllerManagerInterface: More than one motion controller active!"
         self._current_controller = ctrlr_list[0].name if len(ctrlr_list) > 0 else None
 

@@ -30,12 +30,14 @@
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
     <param name="publish_frequency" value="$(arg rate)"/>
   </node>
+
   <!-- Start joint_state_publisher with the joint states of the robot -->
   <node name="joint_state_publisher" type="joint_state_publisher" pkg="joint_state_publisher" output="screen">
     <rosparam if="$(arg load_gripper)" param="source_list">[franka_ros_interface/custom_franka_state_controller/joint_states, franka_gripper/joint_states] </rosparam>
     <rosparam unless="$(arg load_gripper)" param="source_list">[franka_ros_interface/custom_franka_state_controller/joint_states] </rosparam>
     <param name="rate" value="$(arg rate)"/>
   </node>
+  
   <node name="joint_state_desired_publisher" type="joint_state_publisher" pkg="joint_state_publisher" output="screen">
     <rosparam if="$(arg load_gripper)" param="source_list">[franka_ros_interface/custom_franka_state_controller/joint_states_desired, franka_gripper/joint_states] </rosparam>
     <rosparam unless="$(arg load_gripper)" param="source_list">[franka_ros_interface/custom_franka_state_controller/joint_states_desired] </rosparam>

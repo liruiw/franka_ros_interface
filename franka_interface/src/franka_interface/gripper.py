@@ -299,7 +299,7 @@ class GripperInterface(object):
         self._caller = "open gripper"
         return self.move_joints(0.2)
 
-    def close(self):
+    def close(self, width=0.001, force=0.1):
         """
         close gripper to till collision is detected.
         Note: This is not exactly doing what it should. The behaviour is 
@@ -315,7 +315,7 @@ class GripperInterface(object):
             if not result.success:
                 self.stop_action()
         self._caller = "close gripper"
-        return self.grasp(0.001, 0.1, cb = cb)
+        return self.grasp(width, force, cb = cb)
 
     def calibrate(self):
         return self.home_joints(wait_for_result = True)
