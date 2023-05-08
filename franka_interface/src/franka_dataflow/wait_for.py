@@ -62,8 +62,8 @@ def wait_for(test, timeout=1.0, raise_on_error=True, rate=100,
     return True
 
 
-def wait_for_with_state_callback(test, timeout=1.0, raise_on_error=True, rate=100,
-             timeout_msg="timeout expired", body=None):
+def wait_for_with_state_callback(test, timeout=1.0, raise_on_error=True, rate=1000,
+             timeout_msg="timeout expired", body=None, time_gap = 0.01): # 0.1):
     """
     Waits until some condition evaluates to true.
 
@@ -79,17 +79,18 @@ def wait_for_with_state_callback(test, timeout=1.0, raise_on_error=True, rate=10
     end_time = start_time + timeout
     record_time = start_time
     rate = rospy.Rate(rate)
-    time_gap = 0.1
     notimeout = (timeout < 0.0) or timeout == float("inf")
 
     while not test():
         if rospy.is_shutdown():
             if raise_on_error:
                 raise OSError(errno.ESHUTDOWN, "ROS Shutdown")
+            print('rospy shut down')
             return False
         elif (not notimeout) and (rospy.get_time() >= end_time):
-            if raise_on_error:
+            if raise_on_error:  
                 raise OSError(errno.ETIMEDOUT, timeout_msg)
+            print('timeout')
             rospy.loginfo(timeout_msg)
             return False
 

@@ -1123,9 +1123,10 @@ class ArmInterface(object):
         self,
         traj: RobotTrajectory,
         timeout: float = 5.0,
-        threshold: float = 0.00085,
+        threshold: float = 0.01, # 0.00085,
         test: bool = None,
         state_callback: bool = False,
+        joint_diff_tolerance= 0.5,
     ) -> None:
         """
         (Blocking) Executed a MoveIt joint space trajectory.
@@ -1149,7 +1150,8 @@ class ArmInterface(object):
         current_q = self.joint_angles()
         diff_from_start = sum([abs(pos - current_q[name]) for name, pos in zip(self._joint_names, position_path[0])])
         rospy.loginfo(f"Joint position diff from start: {diff_from_start}")
-        if diff_from_start > 0.1:
+        print(f"diff_from_start: {diff_from_start:.3f}")
+        if diff_from_start > joint_diff_tolerance:
             raise IOError("[ExecuteMoveItTrajectory] Robot not at start of trajectory")
 
         if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
