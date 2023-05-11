@@ -63,6 +63,7 @@ add_library(franka_ros_controllers
   src/ntorque_controller.cpp
   src/cartesian_impedance_controller.cpp
   src/joint_impedance_controller.cpp
+  src/osc_controller.cpp
 )
 
 add_dependencies(franka_ros_controllers

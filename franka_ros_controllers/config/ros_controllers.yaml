@@ -166,3 +166,22 @@ ntorque_controller:
         - panda_joint6
         - panda_joint7
 
+
+osc_controller:
+    type: franka_ros_controllers/OSCController
+    arm_id: panda
+    joint_names:
+        - panda_joint1
+        - panda_joint2
+        - panda_joint3
+        - panda_joint4
+        - panda_joint5
+        - panda_joint6
+        - panda_joint7
+    stiffness_gains:
+        - 200.0
+        - 200.0
+        - 200.0
+        - 20.0
+        - 20.0
+        - 20.0

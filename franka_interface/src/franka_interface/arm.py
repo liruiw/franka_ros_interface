@@ -235,13 +235,13 @@ class ArmInterface(object):
         )
 
         # Cartesian Impedance Controller Publishers
-        self._cartesian_impedance_pose_publisher = rospy.Publisher("equilibrium_pose", PoseStamped, queue_size=10)
+        self._cartesian_impedance_pose_publisher = rospy.Publisher("equilibrium_pose", PoseStamped, queue_size=1) # 10 change to 1
         self._cartesian_stiffness_publisher = rospy.Publisher(
             "impedance_stiffness", CartImpedanceStiffness, queue_size=10
         )
 
         # Force Control Publisher
-        self._force_controller_publisher = rospy.Publisher("wrench_target", Wrench, queue_size=10)
+        self._force_controller_publisher = rospy.Publisher("wrench_target", Wrench, queue_size=1)
 
         # Torque Control Publisher
         self._torque_controller_publisher = rospy.Publisher("torque_target", TorqueCmd, queue_size=20)
@@ -1350,8 +1350,6 @@ class ArmInterface(object):
         marker_pose.pose.orientation.z = pose["orientation"].z
         marker_pose.pose.orientation.w = pose["orientation"].w
         self._cartesian_impedance_pose_publisher.publish(marker_pose)
-        self.reactivate()
-
 
 
     def set_joint_impedance_config(self, q, stiffness=None):
