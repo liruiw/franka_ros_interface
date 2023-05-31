@@ -343,6 +343,7 @@ class GripperInterface(object):
             speed = self._gripper_speed
         goal.width = width
         goal.speed = speed
+        # goal.force = force
 
         self._move_action_client.send_goal(goal, done_cb =self._done_cb, active_cb = self._active_cb, feedback_cb = self._feedback_cb)
 
