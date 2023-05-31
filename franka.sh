@@ -30,15 +30,16 @@
 
 
 # ----- EDIT THIS TO MATCH THE IP OF THE FRANKA ROBOT CONTROLLER IN THE NETWORK
-FRANKA_ROBOT_IP="FRANKA_ROBOT_IP.local"
+FRANKA_ROBOT_IP="128.30.27.86"
 
 # ----- EDIT THIS TO MATCH YOUR IP IN THE NETWORK
-your_ip=""
+your_ip="128.30.27.205"
 
 # ----- EDIT THIS TO MATCH THE IP OF THE MAIN ROS MASTER PC (CONNECTED TO THE FRANKA CONTROLLER)
-ROS_MASTER_IP=""
+ROS_MASTER_IP="128.30.27.86"
 
-ros_version="kinetic"
+ros_version="noetic"
+
 
 ## ========================================= #
 ## ========================================= #

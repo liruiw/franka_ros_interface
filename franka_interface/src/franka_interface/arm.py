@@ -1465,6 +1465,14 @@ class ArmInterface(object):
             rospy.logwarn("ArmInterface: Frames changing not available in simulated environment")
             return False
 
+    def stopControllerAndQuit(self):
+        active_controllers = self._ctrl_manager.list_active_controllers(only_motion_controllers = True)
+        for ctrlr in active_controllers:
+            self._ctrl_manager.stop_controller(ctrlr.name)
+            rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling"%ctrlr.name)
+            rospy.sleep(0.5)
+        self.move_to_neutral()
+        
     def set_EE_frame(self, frame):
         """
         Set new EE frame based on the transformation given by 'frame', which is the
