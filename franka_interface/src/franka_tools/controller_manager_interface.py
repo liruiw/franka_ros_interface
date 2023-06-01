@@ -231,12 +231,16 @@ class FrankaControllerManagerInterface(object):
 
     def _assert_one_active_controller(self):
         ctrlr_list = self.list_active_controllers(only_motion_controllers=True)
-        # import IPython
-        # print(ctrlr_list)
-        # IPython.embed()
+        
         if  len(ctrlr_list) > 1:
             print("FrankaControllerManagerInterface: More than one motion controller active!!")
-        # assert len(ctrlr_list) <= 1, "FrankaControllerManagerInterface: More than one motion controller active!"
+            print(ctrlr_list)
+            for ctrlr in ctrlr_list[1:]:
+                print("stop controller:", ctrlr.name)
+                self.stop_controller(ctrlr.name)
+                rospy.sleep(0.5)
+
+        assert len(ctrlr_list) <= 1, "FrankaControllerManagerInterface: More than one motion controller active!"
         self._current_controller = ctrlr_list[0].name if len(ctrlr_list) > 0 else None
 
 
@@ -265,11 +269,21 @@ class FrankaControllerManagerInterface(object):
         :type name: str
         :param name: name of the controller to be started
         """
-        assert len(self.list_active_controllers(only_motion_controllers=True)) == 0, "FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller
+        # assert len(self.list_active_controllers(only_motion_controllers=True)) == 0, "FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller
+        stop_controllers = []
+        if len(self.list_active_controllers(only_motion_controllers=True)) != 0:
+            print("FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller)
+            
+            for ctrlr in self.list_active_controllers(only_motion_controllers=True):
+                print("stop controller:", ctrlr.name)
+                if ctrlr.name != name:
+                    stop_controllers.append(name)
+
+            #     self.stop_controller(ctrlr.name)
 
         strict = SwitchControllerRequest.STRICT
         req = SwitchControllerRequest(start_controllers=[name],
-                                      stop_controllers=[],
+                                      stop_controllers=stop_controllers,
                                       strictness=strict)
         rospy.logdebug("FrankaControllerManagerInterface: Starting controller: %s"%name)
         self._switch_srv.call(req)
