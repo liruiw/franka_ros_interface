@@ -50,7 +50,7 @@ from franka_core_msgs.msg import (
 )
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64
-from geometry_msgs.msg import PoseStamped, Wrench
+from geometry_msgs.msg import PoseStamped, Wrench, WrenchStamped, Point, PointStamped
 from moveit_msgs.msg import RobotTrajectory
 
 import franka_msgs
@@ -67,7 +67,7 @@ from franka_tools import (
 import IPython
 from pydrake.all import PathParameterizedTrajectory
 from typing import Iterable, Optional
-
+from visualization_msgs.msg import Marker
 
 def convert_dict_to_joint(joints, joint_names):
     return np.array([joints[name] for name in joint_names])
@@ -245,6 +245,9 @@ class ArmInterface(object):
 
         # Torque Control Publisher
         self._torque_controller_publisher = rospy.Publisher("torque_target", TorqueCmd, queue_size=20)
+
+        # Wrench marker publisher 
+        self.endeffector_wrench_marker_publisher = rospy.Publisher('endeffector_wrench_marker', Marker)
 
         # Joint Impedance Controller Publishers
         self._joint_impedance_publisher = rospy.Publisher("joint_impedance_position_velocity", JICmd, queue_size=20)
@@ -493,6 +496,36 @@ class ArmInterface(object):
             deepcopy(self._cartesian_effort),
             deepcopy(self._stiffness_frame_effort),
         )
+        pub_marker = True
+        if pub_marker:
+            # publish wrench visualization
+            # print("publish marker", msg.K_F_ext_hat_K.wrench)
+            self.publish_wrench_stamped(msg.K_F_ext_hat_K)
+
+    def publish_wrench_stamped(self, ws):
+        origin = Point()
+        force_point = Point()
+        force_point.x = 0.1*ws.wrench.force.x
+        force_point.y = 0.1*ws.wrench.force.y
+        force_point.z = 0.1*ws.wrench.force.z
+        force_vec = Marker()
+        force_vec.header.stamp = rospy.Time.now()
+        force_vec.header.frame_id = 'panda_hand'
+        force_vec.ns = "endeffector_wrench"
+        force_vec.action = 0
+        force_vec.type = 0
+        force_vec.scale.x = 0.1
+        force_vec.scale.y = 0.2
+        force_vec.scale.z = 1
+        force_vec.color.a = 0.75
+        force_vec.color.r = 0.0
+        force_vec.color.g = 1.0
+        force_vec.color.b = 0.1
+
+        force_vec.lifetime = rospy.Duration(1)
+        force_vec.points.append(origin)
+        force_vec.points.append(force_point)
+        self.endeffector_wrench_marker_publisher.publish(force_vec)
 
     def joint_angle(self, joint):
         """
