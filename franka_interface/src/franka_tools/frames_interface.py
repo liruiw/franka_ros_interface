@@ -127,6 +127,16 @@ class FrankaFramesInterface(object):
 
         return trans_mat
 
+    def transform_pose(self, transform) -> np.ndarray:
+        from scipy.spatial.transform import Rotation
+
+        translation = [transform.translation.x, transform.translation.y, transform.translation.z]
+        quaternion = [transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w]
+        pose_np = np.eye(4)
+        pose_np[:3, :3] = Rotation.from_quat(quaternion).as_matrix()
+        pose_np[:3, 3] = translation
+        return pose_np
+
     def frames_are_same(self, frame1, frame2):
         """
         :return: True if two transformation matrices are equal

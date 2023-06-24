@@ -68,6 +68,7 @@ import IPython
 from pydrake.all import PathParameterizedTrajectory
 from typing import Iterable, Optional
 from visualization_msgs.msg import Marker
+import tf2_ros
 
 def convert_dict_to_joint(joints, joint_names):
     return np.array([joints[name] for name in joint_names])
@@ -171,6 +172,8 @@ class ArmInterface(object):
         self._tip_states = None
         self._jacobian = None
         self._cartesian_contact = None
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         self._robot_mode = False
 
@@ -191,6 +194,12 @@ class ArmInterface(object):
         self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
 
         self._speed_ratio = 0.15
+        
+        # Lirui: Added this such that we are controlling in the end effector frame
+        self._frames_interface.set_EE_frame_to_link("/panda_hand")
+        # print("rel_pose:", rel_pose)
+        # self.set_EE_frame(rel_pose)
+
 
         queue_size = None if synchronous_pub else 1
         with warnings.catch_warnings():
@@ -449,7 +458,15 @@ class ArmInterface(object):
     def _on_endpoint_state(self, msg):
 
         cart_pose_trans_mat = np.asarray(msg.O_T_EE).reshape(4, 4, order="F")
-        self.end_effector_pose = cart_pose_trans_mat
+        # compute and compare the end effector poses
+
+        panda_hand_pose = self.tf_buffer.lookup_transform(
+                    "world",
+                   'panda_hand',
+                    rospy.Time(0),
+                    rospy.Duration(0.01),
+                ).transform
+        self.end_effector_pose = self._frames_interface.transform_pose(panda_hand_pose)
 
         self._cartesian_pose = {
             "position": cart_pose_trans_mat[:3, 3],
@@ -499,7 +516,6 @@ class ArmInterface(object):
         pub_marker = True
         if pub_marker:
             # publish wrench visualization
-            # print("publish marker", msg.K_F_ext_hat_K.wrench)
             self.publish_wrench_stamped(msg.K_F_ext_hat_K)
 
     def publish_wrench_stamped(self, ws):
@@ -525,7 +541,7 @@ class ArmInterface(object):
         force_vec.lifetime = rospy.Duration(1)
         force_vec.points.append(origin)
         force_vec.points.append(force_point)
-        self.endeffector_wrench_marker_publisher.publish(force_vec)
+        # self.endeffector_wrench_marker_publisher.publish(force_vec)
 
     def joint_angle(self, joint):
         """
