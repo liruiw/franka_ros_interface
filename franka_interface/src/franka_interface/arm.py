@@ -177,6 +177,7 @@ class ArmInterface(object):
         self._tip_states = None
         self._jacobian = None
         self._cartesian_contact = None
+
         # self.tf_buffer = tf2_ros.Buffer()
         # self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
@@ -477,7 +478,7 @@ class ArmInterface(object):
         #             rospy.Duration(0.01),
         #         ).transform
 
-        # self.end_effector_pose = self._frames_interface.transform_pose(panda_hand_pose)
+        # self.end_effector_pose_test = self._frames_interface.transform_pose(panda_hand_pose)
         # def se3_inverse(RT):
         #     RT = RT.reshape(4, 4)
         #     R = RT[:3, :3]
@@ -486,8 +487,9 @@ class ArmInterface(object):
         #     RT_new[:3, :3] = R.transpose()
         #     RT_new[:3, 3] = -1 * np.dot(R.transpose(), T).reshape((3))
         #     return RT_new
-        self.endeffector_pose = cart_pose_trans_mat @ FIX_FLANGE_TO_EE_POSE
-        print("delta pose:", se3_inverse(cart_pose_trans_mat) @ self.end_effector_pose)
+        # print("delta pose:", se3_inverse(self.end_effector_pose_test) @ self.end_effector_pose)
+
+        self.end_effector_pose = cart_pose_trans_mat @ FIX_FLANGE_TO_EE_POSE
         # print("diff:", np.linalg.norm(self.end_effector_pose - cart_pose_trans_mat))
 
         # self.endeffector_pose_publisher.publish(self._frames_interface.make_posestamped(self.end_effector_pose))
