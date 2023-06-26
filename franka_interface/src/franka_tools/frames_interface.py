@@ -30,6 +30,9 @@ import quaternion
 from franka_msgs.srv import SetEEFrame, SetKFrame
 import rospy
 import franka_dataflow
+from geometry_msgs.msg import PoseStamped, Pose
+from std_msgs.msg import Header
+from transforms3d.quaternions import quat2mat, mat2quat
 
 from collections import namedtuple
 _FRAME_NAMES = namedtuple('Constants', ['EE_FRAME', 'K_FRAME'])
@@ -38,6 +41,18 @@ DEFAULT_TRANSFORMATIONS = _FRAME_NAMES( [0.707099974155426, -0.707099974155426, 
     [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.10339999943971634, 1.0]  # K_FRAME
     ) # default when the franka_ros control is launched
 
+def make_pose(pose, frame_id="base_link"):
+    # take pose matrix
+    posemsg = Pose()
+    quat = mat2quat(pose[:3, :3])
+    posemsg.orientation.x = quat[1]
+    posemsg.orientation.y = quat[2]
+    posemsg.orientation.z = quat[3]
+    posemsg.orientation.w = quat[0]
+    posemsg.position.x = pose[0, 3]
+    posemsg.position.y = pose[1, 3]
+    posemsg.position.z = pose[2, 3]
+    return posemsg
 
 class FrankaFramesInterface(object):
     """
@@ -126,6 +141,13 @@ class FrankaFramesInterface(object):
         trans_mat[:3,3] = np.array(t)
 
         return trans_mat
+
+
+    def make_posestamped(self, transform):
+        pose = PoseStamped()
+        pose.header = Header(stamp=rospy.Time.now(), frame_id="panda_hand")
+        pose.pose = make_pose(transform)
+        return pose
 
     def transform_pose(self, transform) -> np.ndarray:
         from scipy.spatial.transform import Rotation

@@ -257,6 +257,7 @@ class ArmInterface(object):
 
         # Wrench marker publisher 
         self.endeffector_wrench_marker_publisher = rospy.Publisher('endeffector_wrench_marker', Marker)
+        self.endeffector_pose_publisher = rospy.Publisher("endeffector_pose", PoseStamped, queue_size=1) 
 
         # Joint Impedance Controller Publishers
         self._joint_impedance_publisher = rospy.Publisher("joint_impedance_position_velocity", JICmd, queue_size=20)
@@ -466,7 +467,9 @@ class ArmInterface(object):
                     rospy.Time(0),
                     rospy.Duration(0.01),
                 ).transform
+
         self.end_effector_pose = self._frames_interface.transform_pose(panda_hand_pose)
+        self.endeffector_pose_publisher.publish(self._frames_interface.make_posestamped(self.end_effector_pose))
 
         self._cartesian_pose = {
             "position": cart_pose_trans_mat[:3, 3],
@@ -513,10 +516,10 @@ class ArmInterface(object):
             deepcopy(self._cartesian_effort),
             deepcopy(self._stiffness_frame_effort),
         )
-        pub_marker = True
-        if pub_marker:
-            # publish wrench visualization
-            self.publish_wrench_stamped(msg.K_F_ext_hat_K)
+        # pub_marker = True
+        # if pub_marker:
+        #     # publish wrench visualization
+        #     self.publish_wrench_stamped(msg.K_F_ext_hat_K)
 
     def publish_wrench_stamped(self, ws):
         origin = Point()
