@@ -70,6 +70,11 @@ from typing import Iterable, Optional
 from visualization_msgs.msg import Marker
 import tf2_ros
 
+FIX_FLANGE_TO_EE_POSE = np.array([[ 7.071e-01, -7.071e-01, -5.967e-07,  3.714e-07],
+ [ 7.071e-01,  7.071e-01, -5.044e-06, -6.319e-07],
+ [ 3.982e-06,  3.149e-06,  1.000e+00, -2.068e-01],
+ [ 0.000e+00,  0.000e+00,  0.000e+00,  1.000e+00]])
+
 def convert_dict_to_joint(joints, joint_names):
     return np.array([joints[name] for name in joint_names])
 
@@ -172,8 +177,8 @@ class ArmInterface(object):
         self._tip_states = None
         self._jacobian = None
         self._cartesian_contact = None
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+        # self.tf_buffer = tf2_ros.Buffer()
+        # self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         self._robot_mode = False
 
@@ -196,9 +201,13 @@ class ArmInterface(object):
         self._speed_ratio = 0.15
         
         # Lirui: Added this such that we are controlling in the end effector frame
-        self._frames_interface.set_EE_frame_to_link("/panda_hand")
+        # IPython.embed()
+        # self._frames_interface._current_EE_frame_transformation = np.eye(4).tolist()
+        # self.reset_EE_frame()
+        #  self.set_EE_frame(np.eye(4).tolist())
+        # self.set_EE_frame_to_link("/panda_hand")
         # print("rel_pose:", rel_pose)
-        # self.set_EE_frame(rel_pose)
+        #
 
 
         queue_size = None if synchronous_pub else 1
@@ -461,15 +470,27 @@ class ArmInterface(object):
         cart_pose_trans_mat = np.asarray(msg.O_T_EE).reshape(4, 4, order="F")
         # compute and compare the end effector poses
 
-        panda_hand_pose = self.tf_buffer.lookup_transform(
-                    "world",
-                   'panda_hand',
-                    rospy.Time(0),
-                    rospy.Duration(0.01),
-                ).transform
+        # panda_hand_pose = self.tf_buffer.lookup_transform(
+        #             "world",
+        #            'panda_hand',
+        #             rospy.Time(0),
+        #             rospy.Duration(0.01),
+        #         ).transform
 
-        self.end_effector_pose = self._frames_interface.transform_pose(panda_hand_pose)
-        self.endeffector_pose_publisher.publish(self._frames_interface.make_posestamped(self.end_effector_pose))
+        # self.end_effector_pose = self._frames_interface.transform_pose(panda_hand_pose)
+        # def se3_inverse(RT):
+        #     RT = RT.reshape(4, 4)
+        #     R = RT[:3, :3]
+        #     T = RT[:3, 3].reshape((3, 1))
+        #     RT_new = np.eye(4, dtype=np.float32)
+        #     RT_new[:3, :3] = R.transpose()
+        #     RT_new[:3, 3] = -1 * np.dot(R.transpose(), T).reshape((3))
+        #     return RT_new
+        self.endeffector_pose = cart_pose_trans_mat @ FIX_FLANGE_TO_EE_POSE
+        print("delta pose:", se3_inverse(cart_pose_trans_mat) @ self.end_effector_pose)
+        # print("diff:", np.linalg.norm(self.end_effector_pose - cart_pose_trans_mat))
+
+        # self.endeffector_pose_publisher.publish(self._frames_interface.make_posestamped(self.end_effector_pose))
 
         self._cartesian_pose = {
             "position": cart_pose_trans_mat[:3, 3],
@@ -788,9 +809,10 @@ class ArmInterface(object):
     def switchToController(self, controller_name):
         active_controllers = self._ctrl_manager.list_active_controllers(only_motion_controllers=True)
         for ctrlr in active_controllers:
-            self._ctrl_manager.stop_controller(ctrlr.name)
-            rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name)
-            rospy.sleep(0.5)
+            if ctrlr != controller_name:
+                self._ctrl_manager.stop_controller(ctrlr.name)
+                rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name)
+                rospy.sleep(0.5)
 
         if not self._ctrl_manager.is_loaded(controller_name):
             self._ctrl_manager.load_controller(controller_name)

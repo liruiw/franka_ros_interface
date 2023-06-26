@@ -41,6 +41,12 @@ DEFAULT_TRANSFORMATIONS = _FRAME_NAMES( [0.707099974155426, -0.707099974155426, 
     [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.10339999943971634, 1.0]  # K_FRAME
     ) # default when the franka_ros control is launched
 
+# LIRUI: change the impedance to be at the wrist
+# DEFAULT_TRANSFORMATIONS = _FRAME_NAMES( np.eye(4).tolist(), # EE_FRAME  
+#     np.eye(4).tolist() # K_FRAME
+#     ) # default when the franka_ros control is launched
+
+
 def make_pose(pose, frame_id="base_link"):
     # take pose matrix
     posemsg = Pose()
