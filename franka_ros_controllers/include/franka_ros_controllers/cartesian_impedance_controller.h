@@ -41,6 +41,7 @@ class CartesianImpedanceController : public controller_interface::MultiInterface
   std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
   std::vector<hardware_interface::JointHandle> joint_handles_;
 
+  // manually set?
   double filter_params_{0.005};
   double nullspace_stiffness_{20.0};
   double nullspace_stiffness_target_{20.0};

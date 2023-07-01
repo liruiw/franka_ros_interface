@@ -469,6 +469,8 @@ void CustomFrankaStateController::publishTransforms(const ros::Time& time) {
     transformStampedTFToMsg(stamped_transform, transform_message);
     publisher_transforms_.msg_.transforms[1] = transform_message;
     publisher_transforms_.unlockAndPublish();
+
+    // also publish end effector pose
   }
 }
 

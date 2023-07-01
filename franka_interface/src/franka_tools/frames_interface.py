@@ -151,7 +151,7 @@ class FrankaFramesInterface(object):
 
     def make_posestamped(self, transform):
         pose = PoseStamped()
-        pose.header = Header(stamp=rospy.Time.now(), frame_id="panda_hand")
+        pose.header = Header(stamp=rospy.Time.now(), frame_id="world")
         pose.pose = make_pose(transform)
         return pose
 

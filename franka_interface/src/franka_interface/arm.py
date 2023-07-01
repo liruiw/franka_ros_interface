@@ -50,7 +50,7 @@ from franka_core_msgs.msg import (
 )
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64
-from geometry_msgs.msg import PoseStamped, Wrench, WrenchStamped, Point, PointStamped
+from geometry_msgs.msg import PoseStamped, Wrench, WrenchStamped, Point, PointStamped, Pose
 from moveit_msgs.msg import RobotTrajectory
 
 import franka_msgs
@@ -70,9 +70,9 @@ from typing import Iterable, Optional
 from visualization_msgs.msg import Marker
 import tf2_ros
 
-FIX_FLANGE_TO_EE_POSE = np.array([[ 7.071e-01, -7.071e-01, -5.967e-07,  3.714e-07],
- [ 7.071e-01,  7.071e-01, -5.044e-06, -6.319e-07],
- [ 3.982e-06,  3.149e-06,  1.000e+00, -2.068e-01],
+FIX_FLANGE_TO_EE_POSE = np.array([[ 1, 0, 0,  0],
+ [ 0,  1, 0, 0],
+ [ 0,  0,  1., -0.103],
  [ 0.000e+00,  0.000e+00,  0.000e+00,  1.000e+00]])
 
 def convert_dict_to_joint(joints, joint_names):
@@ -210,6 +210,7 @@ class ArmInterface(object):
         # print("rel_pose:", rel_pose)
         #
 
+        self.endeffector_pose_publisher = rospy.Publisher("endeffector_pose", PoseStamped, queue_size=1)
 
         queue_size = None if synchronous_pub else 1
         with warnings.catch_warnings():
@@ -466,6 +467,23 @@ class ArmInterface(object):
     def get_external_torque(self):
         return self._external_torque_filtered
 
+    def publish_endeffector_pose(self, posemat):
+        pose = PoseStamped()
+        posemsg = Pose()
+
+        posemsg.position.x = posemat[0, 3]
+        posemsg.position.y = posemat[1, 3]
+        posemsg.position.z = posemat[2, 3]
+        rotation = quaternion.from_rotation_matrix(posemat[:3, :3])
+        print(rotation)
+        posemsg.orientation.w = rotation[0]
+        posemsg.orientation.x = rotation[1]
+        posemsg.orientation.y = rotation[2]
+        posemsg.orientation.z = rotation[3]
+        pose.header = Header(stamp=rospy.Time.now(), frame_id="world")
+        pose.pose = posemsg
+        self.endeffector_pose_publisher.publish(pose)
+
     def _on_endpoint_state(self, msg):
 
         cart_pose_trans_mat = np.asarray(msg.O_T_EE).reshape(4, 4, order="F")
@@ -490,9 +508,10 @@ class ArmInterface(object):
         # print("delta pose:", se3_inverse(self.end_effector_pose_test) @ self.end_effector_pose)
 
         self.end_effector_pose = cart_pose_trans_mat @ FIX_FLANGE_TO_EE_POSE
+        # self.publish_endeffector_pose(self.end_effector_pose)
         # print("diff:", np.linalg.norm(self.end_effector_pose - cart_pose_trans_mat))
 
-        # self.endeffector_pose_publisher.publish(self._frames_interface.make_posestamped(self.end_effector_pose))
+        self.endeffector_pose_publisher.publish(self._frames_interface.make_posestamped(self.end_effector_pose))
 
         self._cartesian_pose = {
             "position": cart_pose_trans_mat[:3, 3],
@@ -1399,7 +1418,7 @@ class ArmInterface(object):
         # Do not return until motion complete
         rospy.sleep(0.1)
         while sum(map(abs, self.convertToList(self.joint_velocities()))) > 1e-2:
-            rospy.sleep(0.1)
+            rospy.sleep(0.03)
 
     def set_cart_impedance_pose_nonblocking(self, pose, stiffness=None):
         if self._ctrl_manager.current_controller != self._ctrl_manager.cartesian_impedance_controller:
@@ -1419,7 +1438,6 @@ class ArmInterface(object):
         marker_pose.pose.position.x = pose["position"][0]
         marker_pose.pose.position.y = pose["position"][1]
         marker_pose.pose.position.z = pose["position"][2]
-
 
         marker_pose.pose.orientation.x = pose["orientation"].x
         marker_pose.pose.orientation.y = pose["orientation"].y
