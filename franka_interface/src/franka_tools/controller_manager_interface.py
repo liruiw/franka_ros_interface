@@ -214,7 +214,6 @@ class FrankaControllerManagerInterface(object):
         rospy.on_shutdown(self._clean_shutdown)
 
     def _clean_shutdown(self):
-
         if self._state_subscriber:
             self._state_subscriber.unregister()
 

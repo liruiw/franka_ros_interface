@@ -859,8 +859,8 @@ class ArmInterface(object):
 
         return joint_diff
 
-    def move_to_joint_positions(
-        self, positions, timeout=2.0, threshold=0.00085, test=None, min_traj_dur=0.1, delay=0.00
+    def move_to_joint_positions_nonblocking(
+        self, positions, timeout=0.001, threshold=0.00085, test=None, min_traj_dur=0.02, delay=0.00
     ):
         """
         (Blocking) Commands the limb to the provided positions.
@@ -878,6 +878,75 @@ class ArmInterface(object):
         :param threshold: position threshold in radians across each joint when
          move is considered successful [0.00085]
         :param test: optional function returning True if motion must be aborted
+        """
+
+        if type(positions) is not dict:
+            positions = {j: p for p, j in zip(positions, self._joint_names)}
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
+            self.switchToController(self._ctrl_manager.joint_trajectory_controller)
+
+        traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
+        traj_client.clear()
+
+        dur = []
+        for j in range(len(self._joint_names)):
+            dur.append(
+                max(
+                    abs(positions[self._joint_names[j]] - self._joint_angle[self._joint_names[j]])
+                    / self._joint_limits.velocity[j],
+                    min_traj_dur,
+                )
+            )
+        duration = max(dur) / self._speed_ratio
+        print("[move_to_joint_positions]: duration:", duration)
+        traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
+        traj_client.start() 
+
+    def move_to_joint_traj_nonblocking(
+        self, position_path, timeout=0.001, threshold=0.00085, test=None, min_traj_dur=0.02, delay=0.00
+    ):
+        """
+        (Non-Blocking) Commands the limb to the provided positions.
+        Waits until the reported joint state matches that specified.
+
+        This function uses a low-pass filter using JointTrajectoryService
+        to smooth the movement or optionally uses MoveIt! to plan and
+        execute a trajectory.
+        """
+        IPython.embed()
+        traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
+        traj_client.clear()
+        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
+            self.switchToController(self._ctrl_manager.joint_trajectory_controller)
+
+        # concat with the current joint
+        curr_joint = np.array(self.joint_ordered_angles())[None]
+
+        # build the new joint traj
+        joint_traj = np.concatenate((curr_joint, position_path), axis=0)
+        joint_diff_max = np.abs(np.diff(joint_traj, axis=0)).max(axis=1)
+        durations = joint_diff_max / self._speed_ratio # constant speed
+
+        for idx, positions in enumerate(joint_traj[1:]):
+            if type(positions) is not dict:
+                positions = {j: p for p, j in zip(positions, self._joint_names)}
+ 
+            print("[move_to_joint_positions]: duration:", durations[idx])
+            traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=durations[idx])
+        traj_client.start()  
+        # send the trajectory action request and no need for waiting
+        
+
+    def move_to_joint_positions(
+        self, positions, timeout=2.0, threshold=0.00085, test=None, min_traj_dur=0.1, delay=0.00
+    ):
+        """
+        (Non-Blocking) Commands the limb to the provided positions.
+        Waits until the reported joint state matches that specified.
+
+        This function uses a low-pass filter using JointTrajectoryService
+        to smooth the movement or optionally uses MoveIt! to plan and
+        execute a trajectory.
         """
 
         if type(positions) is not dict:
@@ -923,7 +992,7 @@ class ArmInterface(object):
         )
 
         res = traj_client.result()
-        # IPython.embed()
+        
         if res is not None and res.error_code:
             rospy.logerr("Trajectory Server Message: {}".format(res))
             exit()
