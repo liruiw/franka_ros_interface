@@ -177,10 +177,6 @@ class ArmInterface(object):
         self._tip_states = None
         self._jacobian = None
         self._cartesian_contact = None
-
-        # self.tf_buffer = tf2_ros.Buffer()
-        # self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
-
         self._robot_mode = False
 
         self._command_msg = JointCommand()
@@ -197,19 +193,9 @@ class ArmInterface(object):
                 "Collision Service Not found. It will not be possible to change collision behaviour of robot!"
             )
             self._collision_behaviour_interface = None
-        self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
 
+        # self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
         self._speed_ratio = 0.15
-        
-        # Lirui: Added this such that we are controlling in the end effector frame
-        # IPython.embed()
-        # self._frames_interface._current_EE_frame_transformation = np.eye(4).tolist()
-        # self.reset_EE_frame()
-        #  self.set_EE_frame(np.eye(4).tolist())
-        # self.set_EE_frame_to_link("/panda_hand")
-        # print("rel_pose:", rel_pose)
-        #
-
         self.endeffector_pose_publisher = rospy.Publisher("endeffector_pose", PoseStamped, queue_size=1)
 
         queue_size = None if synchronous_pub else 1
