@@ -871,8 +871,9 @@ class ArmInterface(object):
         if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
 
-        traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
-        traj_client.clear()
+        if not hasattr(self, 'traj_client'):
+            self.traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
+        self.traj_client.clear()
 
         dur = []
         for j in range(len(self._joint_names)):
@@ -885,23 +886,20 @@ class ArmInterface(object):
             )
         duration = max(dur) / self._speed_ratio
         print("[move_to_joint_positions]: duration:", duration)
-        traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
-        traj_client.start() 
+        self.traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
+        self.traj_client.start() 
 
     def move_to_joint_traj_nonblocking(
-        self, position_path, timeout=0.001, threshold=0.00085, test=None, min_traj_dur=0.02, delay=0.00
+        self, position_path, timeout=0.001, threshold=0.00085, test=None, min_traj_dur=0.02, delay=0.00, vel=0.005
     ):
         """
-        (Non-Blocking) Commands the limb to the provided positions.
-        Waits until the reported joint state matches that specified.
+        (Non-Blocking) Commands the limb to the position trajectory
 
-        This function uses a low-pass filter using JointTrajectoryService
-        to smooth the movement or optionally uses MoveIt! to plan and
-        execute a trajectory.
+        This function use trajetory client to set a target trajectory for tracking
         """
-        IPython.embed()
-        traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
-        traj_client.clear()
+        if not hasattr(self, 'traj_client'):
+            self.traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
+        self.traj_client.clear()
         if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
 
@@ -912,14 +910,15 @@ class ArmInterface(object):
         joint_traj = np.concatenate((curr_joint, position_path), axis=0)
         joint_diff_max = np.abs(np.diff(joint_traj, axis=0)).max(axis=1)
         durations = joint_diff_max / self._speed_ratio # constant speed
+        velocities = [vel for n in self._joint_names]
 
         for idx, positions in enumerate(joint_traj[1:]):
             if type(positions) is not dict:
                 positions = {j: p for p, j in zip(positions, self._joint_names)}
- 
-            print("[move_to_joint_positions]: duration:", durations[idx])
-            traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=durations[idx])
-        traj_client.start()  
+
+            self.traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=np.sum(durations[:idx]), velocities=velocities)
+        print("move trajectory: duration:", durations)
+        self.traj_client.start()  
         # send the trajectory action request and no need for waiting
         
 
@@ -930,9 +929,8 @@ class ArmInterface(object):
         (Non-Blocking) Commands the limb to the provided positions.
         Waits until the reported joint state matches that specified.
 
-        This function uses a low-pass filter using JointTrajectoryService
-        to smooth the movement or optionally uses MoveIt! to plan and
-        execute a trajectory.
+        This function use trajetory client to set a target joint position for tracking
+
         """
 
         if type(positions) is not dict:
@@ -1023,7 +1021,6 @@ class ArmInterface(object):
             rospy.loginfo("Switched to joint trajectory controller")
 
         traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
-
         time_so_far = 0
         total_times = [0]
         interval_lengths = [0]
@@ -1044,7 +1041,6 @@ class ArmInterface(object):
                 )
 
             interval = max(dur) / self._speed_ratio
-            # print(max(dur), interval)
             interval_lengths.append(interval)
 
             time_so_far += interval
