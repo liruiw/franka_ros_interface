@@ -268,17 +268,17 @@ class FrankaControllerManagerInterface(object):
         :type name: str
         :param name: name of the controller to be started
         """
-        # assert len(self.list_active_controllers(only_motion_controllers=True)) == 0, "FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller
-        stop_controllers = []
-        if len(self.list_active_controllers(only_motion_controllers=True)) != 0:
-            print("FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller)
+        assert len(self.list_active_controllers(only_motion_controllers=True)) == 0, "FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller
+        # stop_controllers = []
+        # if len(self.list_active_controllers(only_motion_controllers=True)) != 0:
+        #     print("FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller)
             
-            for ctrlr in self.list_active_controllers(only_motion_controllers=True):
-                print("stop controller:", ctrlr.name)
-                if ctrlr.name != name:
-                    stop_controllers.append(name)
+        #     for ctrlr in self.list_active_controllers(only_motion_controllers=True):
+        #         print("stop controller:", ctrlr.name)
+        #         if ctrlr.name != name:
+        #             stop_controllers.append(name)
 
-            #     self.stop_controller(ctrlr.name)
+        #         self.stop_controller(ctrlr.name)
 
         strict = SwitchControllerRequest.STRICT
         req = SwitchControllerRequest(start_controllers=[name],

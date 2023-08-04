@@ -834,7 +834,7 @@ class ArmInterface(object):
                 self._ctrl_manager.stop_controller(ctrlr.name)
                 rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name)
                 rospy.sleep(0.5)
-
+    
         if not self._ctrl_manager.is_loaded(controller_name):
             self._ctrl_manager.load_controller(controller_name)
         self._ctrl_manager.start_controller(controller_name)
