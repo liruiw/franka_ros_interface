@@ -69,6 +69,7 @@ from pydrake.all import PathParameterizedTrajectory
 from typing import Iterable, Optional
 from visualization_msgs.msg import Marker
 import tf2_ros
+import time
 
 FIX_FLANGE_TO_EE_POSE = np.array([[ 1, 0, 0,  0],
  [ 0,  1, 0, 0],
@@ -846,19 +847,22 @@ class ArmInterface(object):
          move is considered successful [0.00085]
         :param test: optional function returning True if motion must be aborted
         """
+        start_time = time.time()
 
         if type(positions) is not dict:
             positions = {j: p for p, j in zip(positions, self._joint_names)}
-        if self._ctrl_manager.current_controller != self._ctrl_manager.joint_trajectory_controller:
+        if self._ctrl_manager._current_controller != self._ctrl_manager.joint_trajectory_controller:
             self.switchToController(self._ctrl_manager.joint_trajectory_controller)
-
+            time.sleep(0.3)
+            
         if not hasattr(self, 'traj_client'):
-            self.traj_client = JointTrajectoryActionClient(joint_names=self.joint_names())
+            self.traj_client = JointTrajectoryActionClient(joint_names=self.joint_names(), goal_time_tolerance=0.001)
         self.traj_client.clear()
+        print(f"traj client clear time: {time.time() - start_time:.3f}") 
 
         dur = []
         for j in range(len(self._joint_names)):
-            dur.append(
+            dur.append( 
                 max(
                     abs(positions[self._joint_names[j]] - self._joint_angle[self._joint_names[j]])
                     / self._joint_limits.velocity[j],
@@ -868,7 +872,7 @@ class ArmInterface(object):
         duration = max(dur) / self._speed_ratio
         print("[move_to_joint_positions]: duration:", duration)
         self.traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
-        self.traj_client.start() 
+        self.traj_client.start()
 
     def move_to_joint_traj_nonblocking(
         self, position_path, timeout=0.001, threshold=0.00085, test=None, min_traj_dur=0.02, delay=0.00, vel=0.005

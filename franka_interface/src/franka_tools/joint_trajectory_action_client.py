@@ -43,7 +43,9 @@ class JointTrajectoryActionClient(object):
     :py:class:`franka_tools.FrankaControllerManagerInterface`.
     """
 
-    def __init__(self, joint_names, controller_name="position_joint_trajectory_controller"):
+    def __init__(self, joint_names, 
+            controller_name="position_joint_trajectory_controller",
+            goal_time_tolerance=0.1):
         self._joint_names = joint_names
 
         action_topic = f"/{controller_name}/follow_joint_trajectory"
@@ -58,7 +60,7 @@ class JointTrajectoryActionClient(object):
             exit()
 
         self._goal = FollowJointTrajectoryGoal()
-        self._goal_time_tolerance = rospy.Time(0.1)
+        self._goal_time_tolerance = rospy.Time(goal_time_tolerance)
         self._goal.goal_time_tolerance = self._goal_time_tolerance
 
         self.clear()
