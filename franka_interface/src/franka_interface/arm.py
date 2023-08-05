@@ -148,7 +148,7 @@ class ArmInterface(object):
         ROBOT_MODE_USER_STOPPED = 5
         ROBOT_MODE_AUTOMATIC_ERROR_RECOVERY = 6
 
-    def __init__(self, synchronous_pub=False):
+    def __init__(self, synchronous_pub=False, nocontroller=False):
         """ """
         self.hand = franka_interface.GripperInterface()
 
@@ -187,15 +187,16 @@ class ArmInterface(object):
 
         self._frames_interface = FrankaFramesInterface()
 
-        try:
-            self._collision_behaviour_interface = CollisionBehaviourInterface()
-        except rospy.ROSException:
-            rospy.loginfo(
-                "Collision Service Not found. It will not be possible to change collision behaviour of robot!"
-            )
-            self._collision_behaviour_interface = None
- 
-        self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
+        if not nocontroller:
+            try:
+                self._collision_behaviour_interface = CollisionBehaviourInterface()
+            except rospy.ROSException:
+                rospy.loginfo(
+                    "Collision Service Not found. It will not be possible to change collision behaviour of robot!"
+                )
+                self._collision_behaviour_interface = None
+     
+            self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
         self._speed_ratio = 0.15
         self.endeffector_pose_publisher = rospy.Publisher("endeffector_pose", PoseStamped, queue_size=1)
 
