@@ -38,6 +38,7 @@ from franka_tools import ControllerParamConfigClient
 
 from controller_manager_msgs.utils import ( ControllerLister, 
                                 get_rosparam_controller_names)
+import time
 
 def _resolve_controllers_ns(cm_ns):
     """
@@ -269,7 +270,7 @@ class FrankaControllerManagerInterface(object):
         :param name: name of the controller to be started
         """
         assert len(self.list_active_controllers(only_motion_controllers=True)) == 0, "FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller
-        # stop_controllers = []
+        stop_controllers = []
         # if len(self.list_active_controllers(only_motion_controllers=True)) != 0:
         #     print("FrankaControllerManagerInterface: One motion controller already active: %s. Stop this controller before activating another!"%self._current_controller)
             
@@ -286,7 +287,7 @@ class FrankaControllerManagerInterface(object):
                                       strictness=strict)
         rospy.logdebug("FrankaControllerManagerInterface: Starting controller: %s"%name)
         self._switch_srv.call(req)
-
+        time.sleep(0.5)
         self._assert_one_active_controller()
 
     def get_controller_state(self):
