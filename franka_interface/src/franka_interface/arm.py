@@ -194,7 +194,7 @@ class ArmInterface(object):
             )
             self._collision_behaviour_interface = None
 
-        # self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
+        self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
         self._speed_ratio = 0.15
         self.endeffector_pose_publisher = rospy.Publisher("endeffector_pose", PoseStamped, queue_size=1)
 
