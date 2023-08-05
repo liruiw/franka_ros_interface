@@ -193,7 +193,7 @@ class ArmInterface(object):
                 "Collision Service Not found. It will not be possible to change collision behaviour of robot!"
             )
             self._collision_behaviour_interface = None
-
+ 
         self._ctrl_manager = FrankaControllerManagerInterface(ns=self._ns, sim=self._params._in_sim)
         self._speed_ratio = 0.15
         self.endeffector_pose_publisher = rospy.Publisher("endeffector_pose", PoseStamped, queue_size=1)
@@ -474,25 +474,6 @@ class ArmInterface(object):
 
         cart_pose_trans_mat = np.asarray(msg.O_T_EE).reshape(4, 4, order="F")
         # compute and compare the end effector poses
-
-        # panda_hand_pose = self.tf_buffer.lookup_transform(
-        #             "world",
-        #            'panda_hand',
-        #             rospy.Time(0),
-        #             rospy.Duration(0.01),
-        #         ).transform
-
-        # self.end_effector_pose_test = self._frames_interface.transform_pose(panda_hand_pose)
-        # def se3_inverse(RT):
-        #     RT = RT.reshape(4, 4)
-        #     R = RT[:3, :3]
-        #     T = RT[:3, 3].reshape((3, 1))
-        #     RT_new = np.eye(4, dtype=np.float32)
-        #     RT_new[:3, :3] = R.transpose()
-        #     RT_new[:3, 3] = -1 * np.dot(R.transpose(), T).reshape((3))
-        #     return RT_new
-        # print("delta pose:", se3_inverse(self.end_effector_pose_test) @ self.end_effector_pose)
-
         self.end_effector_pose = cart_pose_trans_mat @ FIX_FLANGE_TO_EE_POSE
         # self.publish_endeffector_pose(self.end_effector_pose)
         # print("diff:", np.linalg.norm(self.end_effector_pose - cart_pose_trans_mat))
@@ -820,7 +801,7 @@ class ArmInterface(object):
                 self._ctrl_manager.stop_controller(ctrlr.name)
                 rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name)
                 rospy.sleep(0.5)
-
+    
         if not self._ctrl_manager.is_loaded(controller_name):
             self._ctrl_manager.load_controller(controller_name)
         self._ctrl_manager.start_controller(controller_name)
