@@ -798,12 +798,15 @@ class ArmInterface(object):
 
     def switchToController(self, controller_name):
         active_controllers = self._ctrl_manager.list_active_controllers(only_motion_controllers=True)
+        print("active controllers:", active_controllers)
         for ctrlr in active_controllers:
-            if ctrlr != controller_name:
-                self._ctrl_manager.stop_controller(ctrlr.name)
-                rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name)
-                rospy.sleep(0.5)
-    
+            if ctrlr.name == controller_name: # already active
+                return 
+            self._ctrl_manager.stop_controller(ctrlr.name)
+            # rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name)
+            rospy.loginfo(f"ArmInterface: Both {ctrlr.name} and {controller_name} exist for trajectory controlling")                
+            rospy.sleep(1.)
+
         if not self._ctrl_manager.is_loaded(controller_name):
             self._ctrl_manager.load_controller(controller_name)
         self._ctrl_manager.start_controller(controller_name)
@@ -859,7 +862,6 @@ class ArmInterface(object):
         if not hasattr(self, 'traj_client'):
             self.traj_client = JointTrajectoryActionClient(joint_names=self.joint_names(), goal_time_tolerance=0.001)
         self.traj_client.clear()
-        print(f"traj client clear time: {time.time() - start_time:.3f}") 
 
         dur = []
         for j in range(len(self._joint_names)):
@@ -871,7 +873,7 @@ class ArmInterface(object):
                 )
             )
         duration = max(dur) / self._speed_ratio
-        print("[move_to_joint_positions]: duration:", duration)
+        # print("[move_to_joint_positions]: duration:", duration)
         self.traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
         self.traj_client.start()
 
