@@ -405,8 +405,10 @@ class FrankaControllerManagerInterface(object):
         if switch_ctrl:
             active_controllers = self.list_active_controllers(only_motion_controllers = True)
             for ctrlr in active_controllers:
+                if ctrlr.name == controller_name: 
+                    return curr_ctrlr
                 self.stop_controller(ctrlr.name)
-                rospy.sleep(0.5)
+                rospy.sleep(1)
 
             if not self.is_loaded(controller_name):
                 self.load_controller(controller_name)

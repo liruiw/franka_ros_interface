@@ -801,6 +801,7 @@ class ArmInterface(object):
         print("active controllers:", active_controllers)
         for ctrlr in active_controllers:
             if ctrlr.name == controller_name: # already active
+                print("already active")
                 return 
             self._ctrl_manager.stop_controller(ctrlr.name)
             # rospy.loginfo("ArmInterface: Stopping %s for trajectory controlling" % ctrlr.name)
