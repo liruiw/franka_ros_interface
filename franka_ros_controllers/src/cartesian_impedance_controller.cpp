@@ -147,10 +147,8 @@ void CartesianImpedanceController::update(const ros::Time& /*time*/,
   std::array<double, 42> jacobian_array =
       model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
 
-  // ROS_INFO_STREAM(
-  //       "Inside CartesianImpedanceController Update! "
-  //       "Target End Effector Pose!" << position_d_target_);
-
+  // ROS_INFO("Inside CartesianImpedanceController Update! Target End Effector Pose! %f %f %f",
+  //   position_d_target_[0], position_d_target_[1], position_d_target_[2]);
   // convert to Eigen
   Eigen::Map<Eigen::Matrix<double, 7, 1>> coriolis(coriolis_array.data());
   Eigen::Map<Eigen::Matrix<double, 6, 7>> jacobian(jacobian_array.data());
@@ -252,11 +250,27 @@ void CartesianImpedanceController::equilibriumPoseCallback(
     const geometry_msgs::PoseStampedConstPtr& msg) {
   position_d_target_ << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
   Eigen::Quaterniond last_orientation_d_target(orientation_d_target_);
+
+  // // filter large angles 
+  // Eigen::AngleAxisd aa_orientation_d(last_orientation_d_target);
+  // if (aa_orientation_d.angle() > )
+  ROS_INFO("Current Orientation in Controllers: %f, %f",
+    last_orientation_d_target.coeffs()[0], last_orientation_d_target.coeffs()[1]);
   orientation_d_target_.coeffs() << msg->pose.orientation.x, msg->pose.orientation.y,
       msg->pose.orientation.z, msg->pose.orientation.w;
-  if (last_orientation_d_target.coeffs().dot(orientation_d_target_.coeffs()) < 0.0) {
-    orientation_d_target_.coeffs() << -orientation_d_target_.coeffs();
-  }
+  ROS_INFO("Next Orientation in Controllers: %f, %f",
+    orientation_d_target_.coeffs()[0], orientation_d_target_.coeffs()[1]);
+
+  // float threshold = 0.3;
+
+  // if ((last_orientation_d_target.coeffs().dot(orientation_d_target_.coeffs()) < threshold) &&
+  //     (last_orientation_d_target.coeffs().dot(orientation_d_target_.coeffs()) > -threshold)){
+
+
+  //   // if (last_orientation_d_target.coeffs().dot(orientation_d_target_.coeffs()) < 0.0) {
+  //   //   orientation_d_target_.coeffs() << -orientation_d_target_.coeffs();
+  //   // }
+  // }
 }
 
 }  // namespace franka_ros_controllers

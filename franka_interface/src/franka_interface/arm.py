@@ -833,8 +833,8 @@ class ArmInterface(object):
         return joint_diff
 
     def move_to_joint_positions_nonblocking(
-        self, positions, timeout=0.001, threshold=0.00085, test=None, min_traj_dur=0.02, delay=0.00
-    ):
+        self, positions, timeout=0.001, threshold=0.00085, test=None, min_traj_dur=0.03, delay=0.02
+    ): # 0.02
         """
         (Blocking) Commands the limb to the provided positions.
         Waits until the reported joint state matches that specified.
@@ -861,21 +861,30 @@ class ArmInterface(object):
             time.sleep(0.3)
             
         if not hasattr(self, 'traj_client'):
-            self.traj_client = JointTrajectoryActionClient(joint_names=self.joint_names(), goal_time_tolerance=0.001)
+            self.traj_client = JointTrajectoryActionClient(joint_names=self.joint_names(), goal_time_tolerance=min_traj_dur)
+        
+        # self.traj_client.stop()
         self.traj_client.clear()
 
+        joint_positions = np.array([positions[n] for n in self._joint_names])
+        curr_joint_positions = np.array([self._joint_angle[n] for n in self._joint_names])
+        joint_diff = joint_positions - curr_joint_positions
         dur = []
         for j in range(len(self._joint_names)):
             dur.append( 
-                max(
-                    abs(positions[self._joint_names[j]] - self._joint_angle[self._joint_names[j]])
-                    / self._joint_limits.velocity[j],
+                max(joint_diff[j] / self._joint_limits.velocity[j],
                     min_traj_dur,
                 )
             )
         duration = max(dur) / self._speed_ratio
-        # print("[move_to_joint_positions]: duration:", duration)
-        self.traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
+
+        # use previous velocity as the feedforward velocity
+        joint_vel_estimates = joint_diff / duration
+        # print(duration, joint_vel_estimates)
+        # self.traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration)
+
+        self.traj_client.add_point(positions=[positions[n] for n in self._joint_names], time=duration, 
+                            ) # velocities=joint_vel_estimates
         self.traj_client.start()
 
     def move_to_joint_traj_nonblocking(
